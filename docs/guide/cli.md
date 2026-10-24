@@ -101,6 +101,8 @@ su -c '/data/adb/modules/netproxy/netproxyctl app list'
 su -c '/data/adb/modules/netproxy/netproxyctl app mode whitelist'
 su -c '/data/adb/modules/netproxy/netproxyctl app add 0:com.example.app'
 su -c '/data/adb/modules/netproxy/netproxyctl app remove 0:com.example.app'
+su -c '/data/adb/modules/netproxy/netproxyctl app bind 0:com.example.app <节点 tag>'
+su -c '/data/adb/modules/netproxy/netproxyctl app unbind 0:com.example.app'
 su -c '/data/adb/modules/netproxy/netproxyctl app enable'
 su -c '/data/adb/modules/netproxy/netproxyctl app disable'
 
@@ -110,6 +112,8 @@ su -c '/data/adb/modules/netproxy/netproxyctl network evaluate --type wifi --ssi
 应用引用必须是 `<用户ID>:<包名>`。配置保存引用而不是 UID；生成运行时配置时，Go 组件按指定用户向 Android package service 查询 UID。
 
 名单保存在 `inbound.json` 的共用 `app` 对象。服务运行时，有效策略变化自动应用；批量修改可通过 `inbound/app` 分区一次保存。只筛选本机应用，不识别热点客户端。
+
+`app bind` 把单个应用绑定到指定出站（节点 tag、`direct` 直连或 `Proxy` 主选择器），保存在 `app.bindings`，运行时编译为按包名匹配的路由规则；绑定只对已加入白名单的应用生效。跟随主节点用无绑定表示：`app bind <引用> Proxy` 与 `app unbind <引用>` 都会删除绑定，`app remove` 移出名单时也连带清除。保存时不校验 tag 是否存在，节点缺失时运行时跳过该绑定并记录日志。
 
 `network evaluate` 是高级排查入口。正常情况下后台 Worker 会根据 Android 网络事件自动评估，不需要定时手工调用。
 

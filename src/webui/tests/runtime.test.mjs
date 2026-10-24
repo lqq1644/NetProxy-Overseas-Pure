@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { checkBuild } from '../scripts/check-build.mjs'
-import { decodeCtlResult } from '../src/contract.ts'
+import { decodeCtlResult, nodeTagsFromSnapshot } from '../src/contract.ts'
 import { createPoller } from '../src/polling.ts'
 import { complete, replaceCompletion } from '../src/autocomplete.ts'
 import { parseCommandLine } from '../src/command.ts'
@@ -156,7 +156,7 @@ test('mock 同步单文件模板、分区与真实后端状态边界', () => {
     assert.deepEqual(JSON.parse(result.data.content), { [section]: defaults[section] })
     assert.ok(result.data.revision)
   }
-  assert.deepEqual(run('app', 'list').data, { enabled: false, mode: 'blacklist', proxy_apps: '', bypass_apps: '' })
+  assert.deepEqual(run('app', 'list').data, { enabled: true, mode: 'whitelist', proxy_apps: '', bypass_apps: '', bindings: [] })
   assert.equal(run('config', 'read', 'ebpf').ok, false)
   assert.equal(run('config', 'read', 'runtime/ebpf.json').ok, false)
   assert.equal(run('tun', 'status').ok, false)
@@ -175,6 +175,52 @@ test('mock 同步单文件模板、分区与真实后端状态边界', () => {
   run('service', 'stop')
   assert.equal(run('service', 'status').data.active_backend, null)
   assert.equal(run('config', 'read', 'runtime/inbound.json').ok, true)
+})
+
+test('分应用绑定在命令表、mock 与补全中同步', () => {
+  const run = (...args) => decodeCtlResult(mockCtl(args))
+  assert.ok(COMMANDS.app.actions.includes('bind') && COMMANDS.app.actions.includes('unbind'))
+  assert.match(COMMANDS.app.help, /app bind <用户ID>:<包名> <出站>/)
+  assert.match(COMMANDS.app.help, /Proxy 跟随主节点/)
+
+  // 快照 tag 提取：跨组去重，形状不符时为空。
+  assert.deepEqual(nodeTagsFromSnapshot(run('node', 'snapshot').data), ['demo-node'])
+  assert.deepEqual(nodeTagsFromSnapshot({ groups: [{ nodes: [{ tag: 'a' }, { tag: 'a' }, { tag: 'b' }] }, { nodes: [{ tag: 'b' }, {}] }, {}] }), ['a', 'b'])
+  assert.deepEqual(nodeTagsFromSnapshot(undefined), [])
+  assert.deepEqual(nodeTagsFromSnapshot({ groups: 'x' }), [])
+
+  // 出站补全只出现在 app bind 的第二个参数位置，候选为保留出站加节点 tag。
+  const tags = ['China', 'JP']
+  assert.deepEqual(complete('app bind 0:com.example.app ', [], [], [], tags).candidates, ['Proxy', 'direct', 'China', 'JP'])
+  assert.deepEqual(complete('app bind 0:com.example.app Ch', [], [], [], tags).candidates, ['China'])
+  assert.deepEqual(complete('app bind ', [], [], [], tags).candidates, [])
+  assert.deepEqual(complete('app bind 0:com.example.app China extra ', [], [], [], tags).candidates, [])
+
+  // mock 绑定流程与真实命令口径一致：覆盖、跟随主节点删除、解绑、移出名单连带清除。
+  assert.deepEqual(run('app', 'list').data.bindings, [])
+  assert.equal(run('app', 'bind', '0:com.example.app', 'China').code, 'app.bind')
+  assert.deepEqual(run('app', 'list').data.bindings, [{ app: '0:com.example.app', outbound: 'China' }])
+  run('app', 'bind', '0:com.example.app', 'JP')
+  assert.deepEqual(run('app', 'list').data.bindings, [{ app: '0:com.example.app', outbound: 'JP' }])
+  assert.deepEqual(JSON.parse(run('config', 'read', 'inbound/app').data.content), {
+    app: { enabled: true, mode: 'whitelist', proxy_apps: [], bypass_apps: [], bindings: [{ app: '0:com.example.app', outbound: 'JP' }] },
+  })
+  run('app', 'bind', '0:com.example.app', 'Proxy')
+  assert.deepEqual(run('app', 'list').data.bindings, [])
+  run('app', 'bind', '0:com.example.app', 'direct')
+  assert.deepEqual(run('app', 'list').data.bindings, [{ app: '0:com.example.app', outbound: 'direct' }])
+  assert.equal(run('app', 'unbind', '0:com.example.app').code, 'app.unbind')
+  assert.deepEqual(run('app', 'list').data.bindings, [])
+  run('app', 'add', '0:com.example.app')
+  run('app', 'bind', '0:com.example.app', 'China')
+  run('app', 'remove', '0:com.example.app')
+  assert.deepEqual(run('app', 'list').data, { enabled: true, mode: 'whitelist', proxy_apps: '', bypass_apps: '', bindings: [] })
+
+  // 参数校验与真实命令一致：缺少出站是用法错误，非法引用与空出站被拒绝。
+  assert.equal(run('app', 'bind', '0:com.example.app').code, 'usage.invalid')
+  assert.equal(run('app', 'bind', 'invalid', 'China').code, 'app.package_invalid')
+  assert.equal(run('app', 'bind', '0:com.example.app', ' ').code, 'app.binding_invalid')
+  assert.equal(run('app', 'unbind', 'invalid').code, 'app.package_invalid')
 })
 
 test('eBPF mock 区分可读预检与显式原始报告', () => {
