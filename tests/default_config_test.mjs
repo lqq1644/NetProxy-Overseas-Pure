@@ -83,7 +83,6 @@ test('默认配置仅保留部署、运行时生成、模式命名、原生 DNS 
   expected.route.rule_set = expected.route.rule_set.filter(rule => !list(rule.tag).some(tag => tag.startsWith('geosite/') || tag.startsWith('geoip/')))
   const hijackIndex = expected.route.rules.findIndex(rule => rule.action === 'hijack-dns')
   expected.route.rules.splice(hijackIndex + 1, 0,
-    { ip_cidr: ['::/0'], action: 'reject' },
     { protocol: 'quic', action: 'reject' },
     { network: 'udp', port: 443, action: 'reject' })
   expected.route.default_domain_resolver = 'dns-direct'
@@ -100,8 +99,7 @@ test('海外纯净默认不引用 geosite/geoip 与大陆 DNS，兜底直连并�
     assert.ok(!tag.startsWith('geosite/') && !tag.startsWith('geoip/'), tag)
   }
   const hijackIndex = config.route.rules.findIndex(rule => rule.action === 'hijack-dns')
-  assert.deepEqual(config.route.rules.slice(hijackIndex + 1, hijackIndex + 4), [
-    { ip_cidr: ['::/0'], action: 'reject' },
+  assert.deepEqual(config.route.rules.slice(hijackIndex + 1, hijackIndex + 3), [
     { protocol: 'quic', action: 'reject' },
     { network: 'udp', port: 443, action: 'reject' },
   ])
