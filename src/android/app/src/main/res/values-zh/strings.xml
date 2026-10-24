@@ -214,6 +214,9 @@
     <string name="show_system_apps">显示系统应用</string>
     <string name="app_proxy_mode_blacklist">黑名单</string>
     <string name="app_proxy_mode_whitelist">白名单</string>
+    <string name="app_node_binding">专属节点</string>
+    <string name="app_node_follow_main">跟随主节点</string>
+    <string name="app_node_direct">直连</string>
     <string name="proxy_mode_off">关闭</string>
     <string name="app_selected_first">选中优先</string>
     <string name="app_reverse_sort">逆向排序</string>
@@ -624,6 +627,11 @@
     <string name="routing_port">目标端口</string>
     <string name="routing_port_range">目标端口范围</string>
     <string name="routing_package_name">Android 包名</string>
+    <string name="routing_per_app_binding">按应用绑定节点</string>
+    <string name="routing_per_app_binding_hint">为白名单中的每个应用指定节点</string>
+    <string name="routing_select_app">从已安装应用选择</string>
+    <string name="routing_search_apps">搜索应用</string>
+    <string name="routing_no_apps">没有可用应用</string>
     <string name="routing_domain_suffix_hint">example.com 匹配该域名及其所有子域名，不需要填写网址。</string>
     <string name="routing_domain_hint">www.example.com 仅匹配这个域名，不需要填写网址。</string>
     <string name="routing_domain_keyword_hint">example 匹配域名中包含这段文字的目标。</string>

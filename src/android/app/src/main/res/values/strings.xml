@@ -200,6 +200,9 @@
     <string name="show_system_apps">Show system apps</string>
     <string name="app_proxy_mode_blacklist">Blacklist</string>
     <string name="app_proxy_mode_whitelist">Whitelist</string>
+    <string name="app_node_binding">Preferred node</string>
+    <string name="app_node_follow_main">Follow main node</string>
+    <string name="app_node_direct">Direct</string>
     <string name="proxy_mode_off">Off</string>
     <string name="app_selected_first">Selected first</string>
     <string name="app_reverse_sort">Reverse order</string>
@@ -594,6 +597,11 @@
     <string name="routing_port">Destination port</string>
     <string name="routing_port_range">Destination port range</string>
     <string name="routing_package_name">Android package name</string>
+    <string name="routing_per_app_binding">Per-app node binding</string>
+    <string name="routing_per_app_binding_hint">Assign a specific node to each whitelisted app</string>
+    <string name="routing_select_app">Choose installed app</string>
+    <string name="routing_search_apps">Search apps</string>
+    <string name="routing_no_apps">No apps available</string>
     <string name="routing_domain_suffix_hint">example.com matches example.com and its subdomains. Do not enter a URL.</string>
     <string name="routing_domain_hint">www.example.com matches only this domain. Do not enter a URL.</string>
     <string name="routing_domain_keyword_hint">example matches domains containing this text.</string>
