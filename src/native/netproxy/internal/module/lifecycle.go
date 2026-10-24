@@ -504,6 +504,15 @@ func ensureLifecycleStateDir(options Options) error {
 	return os.MkdirAll(options.LogDir, 0o700)
 }
 
+// mainConfigPath 优先使用 Prepare 生成的有效主配置；缺省时回退静态主配置。
+// 有效主配置位于 runtime 目录，相对规则集路径仍以 SingBoxDir 为工作目录解析，不能改动 command.Dir。
+func mainConfigPath(options Options, prepared PrepareResult) string {
+	if prepared.Config != "" {
+		return prepared.Config
+	}
+	return paths.SingBoxConfig(options.SingBoxDir)
+}
+
 func newSingBoxCommand(options Options, prepared PrepareResult) (*exec.Cmd, *os.File, error) {
 	logPath, err := LogFile(options, "core")
 	if err != nil {
@@ -513,7 +522,7 @@ func newSingBoxCommand(options Options, prepared PrepareResult) (*exec.Cmd, *os.
 	if err != nil {
 		return nil, nil, err
 	}
-	command := exec.Command(options.SingBoxPath, "run", "--disable-color", "-c", paths.SingBoxConfig(options.SingBoxDir),
+	command := exec.Command(options.SingBoxPath, "run", "--disable-color", "-c", mainConfigPath(options, prepared),
 		"-c", prepared.Providers, "-c", prepared.Outbounds, "-c", prepared.Inbound)
 	command.Dir = options.SingBoxDir
 	command.Stdout = logFile
@@ -523,7 +532,7 @@ func newSingBoxCommand(options Options, prepared PrepareResult) (*exec.Cmd, *os.
 }
 
 func checkPreparedConfiguration(ctx context.Context, options Options, prepared PrepareResult) error {
-	command := exec.CommandContext(ctx, options.SingBoxPath, "check", "--disable-color", "-c", paths.SingBoxConfig(options.SingBoxDir),
+	command := exec.CommandContext(ctx, options.SingBoxPath, "check", "--disable-color", "-c", mainConfigPath(options, prepared),
 		"-c", prepared.Providers, "-c", prepared.Outbounds, "-c", prepared.Inbound)
 	command.Dir = options.SingBoxDir
 	command.Stdout = os.Stderr

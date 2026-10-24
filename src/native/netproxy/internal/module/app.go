@@ -85,6 +85,10 @@ type PrepareResult struct {
 	Inbound   string             `json:"inbound"`
 	Backend   string             `json:"backend"`
 	Network   *NetworkEvaluation `json:"-"`
+	// Config 是拼入分应用绑定规则后的有效主配置路径，仅供核心启动与 check 使用，不进入 schema=1 输出。
+	Config string `json:"-"`
+	// SkippedBindings 记录因目标出站不存在而未编译的绑定，仅供进程内提示，不进入 schema=1 输出。
+	SkippedBindings []inbound.AppBinding `json:"-"`
 }
 
 // AppPolicy 描述分应用代理的持久设置。
@@ -165,7 +169,15 @@ func Prepare(ctx context.Context, options Options, allowEmpty bool) (PrepareResu
 	for _, ref := range missingPackages {
 		logService(options, "WARN", "inbound.package", "skipped", "分应用代理跳过未安装应用: %s", ref.String())
 	}
-	return PrepareResult{RuntimeResult: runtime, Providers: providers, Outbounds: outbounds, Inbound: inboundPath, Backend: config.Backend, Network: &network}, nil
+	effectiveConfig := filepath.Join(options.RuntimeDir, "config.json")
+	skippedBindings, err := writeEffectiveConfig(options, config, runtime.NodeTags, effectiveConfig)
+	if err != nil {
+		return PrepareResult{}, err
+	}
+	for _, binding := range skippedBindings {
+		logService(options, "WARN", "inbound.binding", "skipped", "分应用绑定跳过不存在的出站: %s -> %s", binding.App, binding.Outbound)
+	}
+	return PrepareResult{RuntimeResult: runtime, Providers: providers, Outbounds: outbounds, Inbound: inboundPath, Backend: config.Backend, Network: &network, Config: effectiveConfig, SkippedBindings: skippedBindings}, nil
 }
 
 func (options Options) updateSelection(ctx context.Context, selection moduleconfig.Selection) error {
