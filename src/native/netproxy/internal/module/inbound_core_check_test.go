@@ -688,7 +688,8 @@ func targetCoreRoutingMarkCases(t *testing.T, core string) {
 					result, err := Prepare(ctx, options, false)
 					if backend == "tun" && mark.nonzero {
 						assertTargetCoreRoutingMarkConflict(t, err, field)
-						if result != (PrepareResult{}) {
+						// PrepareResult 含切片字段后不可整体比较，逐项确认没有泄漏成功的运行时路径。
+						if result.Providers != "" || result.Outbounds != "" || result.Inbound != "" || result.Config != "" || result.Backend != "" || result.Network != nil || len(result.SkippedBindings) != 0 || len(result.NodeTags) != 0 {
 							t.Fatalf("拒绝组合时泄漏成功的 Prepare 结果: %+v", result)
 						}
 						if _, err := Check(ctx, options, false); err == nil {
