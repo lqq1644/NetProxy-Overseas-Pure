@@ -59,7 +59,9 @@ test('默认配置仅保留部署、运行时生成、模式命名、原生 DNS 
   expected.route.rules.unshift(...expected.route.rules.splice(directIndex, 1))
   // 海外纯净差异：默认配置不引用 geosite/geoip 远程规则与大陆 DNS，删除相关服务器与分流规则；
   // DNS 只保留 dns-proxy 组，Direct 模式的 DNS 规则随组删除改指 dns-proxy，去广告只用内置与 AWAvenue 规则集。
+  // 出站域名解析不用经节点的 dns-proxy，改用无 detour 的 Cloudflare 直连 dns-direct，避免域名节点解析自环。
   expected.dns.servers = expected.dns.servers.filter(server => !['dns-direct', 'ali', 'tencent'].includes(server.tag))
+  expected.dns.servers.push({ tag: 'dns-direct', type: 'https', server: 'cloudflare-dns.com', domain_resolver: 'hosts' })
   const hosts = expected.dns.servers.find(server => server.type === 'hosts')
   delete hosts.predefined['doh.pub']
   delete hosts.predefined['dns.alidns.com']
@@ -84,7 +86,7 @@ test('默认配置仅保留部署、运行时生成、模式命名、原生 DNS 
     { ip_cidr: ['::/0'], action: 'reject' },
     { protocol: 'quic', action: 'reject' },
     { network: 'udp', port: 443, action: 'reject' })
-  expected.route.default_domain_resolver = 'dns-proxy'
+  expected.route.default_domain_resolver = 'dns-direct'
   expected.route.final = 'direct'
   expected.route.rules.at(-1).outbound = 'direct'
   assert.deepEqual(config, expected)
@@ -104,8 +106,8 @@ test('海外纯净默认不引用 geosite/geoip 与大陆 DNS，兜底直连并�
     { network: 'udp', port: 443, action: 'reject' },
   ])
   assert.equal(config.route.final, 'direct')
-  assert.equal(config.route.default_domain_resolver, 'dns-proxy')
-  assert.deepEqual(config.dns.servers.map(server => server.tag), ['dns-proxy', 'hosts', 'cloudflare', 'google'])
+  assert.equal(config.route.default_domain_resolver, 'dns-direct')
+  assert.deepEqual(config.dns.servers.map(server => server.tag), ['dns-proxy', 'hosts', 'cloudflare', 'google', 'dns-direct'])
   assert.equal(config.dns.strategy, 'ipv4_only')
   assert.equal(config.dns.final, 'dns-proxy')
 })

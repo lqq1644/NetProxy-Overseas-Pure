@@ -73,6 +73,12 @@
         "server": "dns.google",
         "domain_resolver": "hosts",
         "detour": "Proxy"
+      },
+      {
+        "tag": "dns-direct",
+        "type": "https",
+        "server": "cloudflare-dns.com",
+        "domain_resolver": "hosts"
       }
     ],
     "rules": [
@@ -110,7 +116,7 @@
     }
   ],
   "route": {
-    "default_domain_resolver": "dns-proxy",
+    "default_domain_resolver": "dns-direct",
     "rule_set": [
       { "type": "local", "tag": ["block", "direct", "proxy"], "format": "source", "path": "./rules/local/{tag}.json" },
       {
