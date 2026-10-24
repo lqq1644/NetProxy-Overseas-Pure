@@ -211,3 +211,76 @@ func TestBindingInsertIndexFallbacks(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateAppBindUnbindAndRemoveClearsBinding(t *testing.T) {
+	fakeAndroidPackages(t)
+	options, _, _, _ := inboundApplyFixture(t, "ebpf", false)
+	ctx := t.Context()
+	bindingsOf := func(policy AppPolicy) []inbound.AppBinding { return policy.Bindings }
+
+	policy, err := UpdateApp(ctx, options, "bind", "0:com.example.app", "China")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bindingsOf(policy); len(got) != 1 || got[0] != (inbound.AppBinding{App: "0:com.example.app", Outbound: "China"}) {
+		t.Fatalf("绑定未写入: %+v", got)
+	}
+	// 重复绑定同一应用以新出站覆盖，不产生重复条目。
+	policy, err = UpdateApp(ctx, options, "bind", "0:com.example.app", "JP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bindingsOf(policy); len(got) != 1 || got[0].Outbound != "JP" {
+		t.Fatalf("重复绑定未覆盖: %+v", got)
+	}
+	// 落盘后可由 LoadAppPolicy 读回同样的绑定。
+	loaded, err := LoadAppPolicy(options.InboundConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bindingsOf(loaded); len(got) != 1 || got[0].Outbound != "JP" {
+		t.Fatalf("落盘绑定不一致: %+v", got)
+	}
+	// bind Proxy 表示跟随主节点，删除绑定而不是写入 Proxy 绑定。
+	policy, err = UpdateApp(ctx, options, "bind", "0:com.example.app", "Proxy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bindingsOf(policy)) != 0 {
+		t.Fatalf("跟随主节点应删除绑定: %+v", bindingsOf(policy))
+	}
+	// direct 是普通保留出站，照常写入；unbind 删除。
+	if _, err := UpdateApp(ctx, options, "bind", "0:com.example.app", "direct"); err != nil {
+		t.Fatal(err)
+	}
+	policy, err = UpdateApp(ctx, options, "unbind", "0:com.example.app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bindingsOf(policy)) != 0 {
+		t.Fatalf("unbind 未删除绑定: %+v", bindingsOf(policy))
+	}
+	// 应用被移出名单时连带清除绑定。
+	if _, err := UpdateApp(ctx, options, "bind", "0:com.example.app", "China"); err != nil {
+		t.Fatal(err)
+	}
+	policy, err = UpdateApp(ctx, options, "remove", "0:com.example.app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bindingsOf(policy)) != 0 {
+		t.Fatalf("remove 未清除绑定: %+v", bindingsOf(policy))
+	}
+	// 空出站被拒绝，且不修改已有策略。
+	if _, err := UpdateApp(ctx, options, "bind", "0:com.example.app", " "); err == nil {
+		t.Fatal("空出站应被拒绝")
+	}
+	// 无绑定的策略输出 bindings 为空数组而不是 null。
+	raw, err := json.Marshal(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"bindings":[]`) {
+		t.Fatalf("bindings 应输出空数组: %s", raw)
+	}
+}

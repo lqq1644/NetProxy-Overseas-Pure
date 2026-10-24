@@ -93,10 +93,11 @@ type PrepareResult struct {
 
 // AppPolicy 描述分应用代理的持久设置。
 type AppPolicy struct {
-	Enabled    bool   `json:"enabled"`
-	Mode       string `json:"mode"`
-	ProxyApps  string `json:"proxy_apps"`
-	BypassApps string `json:"bypass_apps"`
+	Enabled    bool                 `json:"enabled"`
+	Mode       string               `json:"mode"`
+	ProxyApps  string               `json:"proxy_apps"`
+	BypassApps string               `json:"bypass_apps"`
+	Bindings   []inbound.AppBinding `json:"bindings"`
 }
 
 // Prepare 生成 Catalog、出站和当前受管入站运行时配置。
@@ -304,7 +305,8 @@ func syncRuntimeSelector(ctx context.Context, options Options, active, inner str
 }
 
 // UpdateApp 在配置事务锁内修改最新应用策略，并应用到运行实例。
-func UpdateApp(ctx context.Context, options Options, action, value string) (data AppPolicy, err error) {
+// bind 动作使用第二个参数作为目标出站，其余动作只使用第一个参数。
+func UpdateApp(ctx context.Context, options Options, action string, values ...string) (data AppPolicy, err error) {
 	persisted := false
 	defer func() { logOperation(options, "app", "app-policy.update", "分应用策略更新", persisted, err) }()
 	if err := options.validate(); err != nil {
@@ -324,6 +326,10 @@ func UpdateApp(ctx context.Context, options Options, action, value string) (data
 		return AppPolicy{}, err
 	}
 	policy := config.App
+	value := ""
+	if len(values) > 0 {
+		value = values[0]
+	}
 	switch action {
 	case "mode":
 		if value != "blacklist" && value != "whitelist" {
@@ -349,6 +355,32 @@ func UpdateApp(ctx context.Context, options Options, action, value string) (data
 		}
 		policy.ProxyApps = slices.DeleteFunc(policy.ProxyApps, func(item string) bool { return item == ref.String() })
 		policy.BypassApps = slices.DeleteFunc(policy.BypassApps, func(item string) bool { return item == ref.String() })
+		// 应用离开名单后绑定失去作用，一并清除，避免重新加入时恢复过期节点。
+		policy.Bindings = removeAppBinding(policy.Bindings, ref.String())
+	case "bind":
+		ref, err := inbound.ParsePackageRef(value)
+		if err != nil {
+			return AppPolicy{}, err
+		}
+		outbound := ""
+		if len(values) > 1 {
+			outbound = strings.TrimSpace(values[1])
+		}
+		if outbound == "" {
+			return AppPolicy{}, errors.New("应用绑定的出站不能为空")
+		}
+		// 跟随主节点用无绑定表示，与管理器选择器的口径一致，不写入 Proxy 绑定。
+		if outbound == "Proxy" {
+			policy.Bindings = removeAppBinding(policy.Bindings, ref.String())
+		} else {
+			policy.Bindings = setAppBinding(policy.Bindings, ref.String(), outbound)
+		}
+	case "unbind":
+		ref, err := inbound.ParsePackageRef(value)
+		if err != nil {
+			return AppPolicy{}, err
+		}
+		policy.Bindings = removeAppBinding(policy.Bindings, ref.String())
 	case "enable", "disable":
 		policy.Enabled = action == "enable"
 	default:
@@ -367,11 +399,16 @@ func UpdateApp(ctx context.Context, options Options, action, value string) (data
 }
 
 func appPolicy(config inbound.Config) AppPolicy {
+	bindings := config.App.Bindings
+	if bindings == nil {
+		bindings = []inbound.AppBinding{}
+	}
 	return AppPolicy{
 		Enabled:    config.App.Enabled,
 		Mode:       config.App.Mode,
 		ProxyApps:  strings.Join(config.App.ProxyApps, ","),
 		BypassApps: strings.Join(config.App.BypassApps, ","),
+		Bindings:   bindings,
 	}
 }
 
@@ -655,6 +692,16 @@ func addPackageRef(current []string, value string) []string {
 		return current
 	}
 	return append(current, value)
+}
+
+// setAppBinding 写入应用绑定：同一应用只保留一条，重复绑定以新出站覆盖。
+func setAppBinding(current []inbound.AppBinding, app, outbound string) []inbound.AppBinding {
+	return append(removeAppBinding(current, app), inbound.AppBinding{App: app, Outbound: outbound})
+}
+
+// removeAppBinding 删除指定应用的绑定；跟随主节点与解除绑定都用无绑定表示。
+func removeAppBinding(current []inbound.AppBinding, app string) []inbound.AppBinding {
+	return slices.DeleteFunc(current, func(item inbound.AppBinding) bool { return item.App == app })
 }
 
 // SubscriptionOptions 描述订阅业务的公共路径和 Service 适配器。
