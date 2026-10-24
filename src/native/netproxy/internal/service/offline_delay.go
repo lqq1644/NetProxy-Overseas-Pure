@@ -148,21 +148,22 @@ func writeOfflineDelayConfig(
 	}
 	config := map[string]any{
 		"log": map[string]any{"level": "error", "output": "stderr"},
+		// 离线测速会话不经节点解析节点域名，直连公共 DNS 与主配置保持同一海外口径。
 		"dns": map[string]any{
 			"servers": []any{
 				map[string]any{
 					"type": "hosts", "tag": "dns-hosts",
 					"predefined": map[string][]string{
-						"dns.alidns.com": {"223.5.5.5", "223.6.6.6"},
-						"doh.pub":        {"120.53.53.53", "1.12.12.12"},
+						"cloudflare-dns.com": {"1.1.1.1", "1.0.0.1"},
+						"dns.google":         {"8.8.8.8", "8.8.4.4"},
 					},
 				},
-				map[string]any{"type": "group", "tag": "dns-direct", "servers": []string{"dns-ali", "dns-tencent"}},
-				map[string]any{"type": "https", "tag": "dns-ali", "server": "dns.alidns.com", "domain_resolver": "dns-hosts"},
-				map[string]any{"type": "https", "tag": "dns-tencent", "server": "doh.pub", "domain_resolver": "dns-hosts"},
+				map[string]any{"type": "group", "tag": "dns-direct", "servers": []string{"dns-cloudflare", "dns-google"}},
+				map[string]any{"type": "https", "tag": "dns-cloudflare", "server": "cloudflare-dns.com", "domain_resolver": "dns-hosts"},
+				map[string]any{"type": "https", "tag": "dns-google", "server": "dns.google", "domain_resolver": "dns-hosts"},
 			},
 			"final":    "dns-direct",
-			"strategy": "prefer_ipv4",
+			"strategy": "ipv4_only",
 		},
 		"route": map[string]any{
 			"default_domain_resolver": "dns-direct",

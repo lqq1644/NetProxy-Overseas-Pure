@@ -100,7 +100,7 @@ func TestOfflineDelayConfigIsIsolatedAndUsesProviderSnapshot(t *testing.T) {
 		}
 	}
 	if serverTypes["dns-hosts"] != "hosts" || serverTypes["dns-direct"] != "group" ||
-		serverTypes["dns-ali"] != "https" || serverTypes["dns-tencent"] != "https" {
+		serverTypes["dns-cloudflare"] != "https" || serverTypes["dns-google"] != "https" {
 		t.Fatalf("临时直连 DNS 配置不完整: %#v", dnsOptions.Servers)
 	}
 }
