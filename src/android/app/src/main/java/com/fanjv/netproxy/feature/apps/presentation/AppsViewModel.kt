@@ -8,6 +8,8 @@ import com.fanjv.netproxy.feature.apps.data.AppIconCache
 import com.fanjv.netproxy.feature.apps.data.AppPackageRepository
 import com.fanjv.netproxy.feature.apps.data.AppPolicyRepository
 import com.fanjv.netproxy.feature.apps.model.AppProxyConfig
+import com.fanjv.netproxy.feature.apps.model.withBinding
+import com.fanjv.netproxy.feature.catalog.data.NodeRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -37,10 +39,13 @@ internal class AppsViewModel(
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     private val modelDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val writes: ConfigurationWrites = ConfigurationWrites(scope),
+    // 只为专属节点选择器提供节点清单；缺省时选择器仅保留跟随主节点与直连两项。
+    private val nodeCatalog: NodeRepository? = null,
 ) : ViewModel(scope) {
     private val _state = MutableStateFlow(AppsUiState())
     val state: StateFlow<AppsUiState> = _state.asStateFlow()
     private var loadJob: Job? = null
+    private var nodeTagsJob: Job? = null
     private var modelJob: Job? = null
     private var mutationJob: Job? = null
     private var loadRevision = 0L
@@ -63,6 +68,7 @@ internal class AppsViewModel(
             loaded = false
         }
         _state.update { it.copy(isLoadingApps = true, error = "") }
+        refreshNodeTags(revision)
         loadJob = viewModelScope.launch {
             try {
                 if (force) packageCatalog.invalidatePackageListingCaches()
@@ -119,6 +125,26 @@ internal class AppsViewModel(
         }
     }
 
+    /** 节点清单只服务于专属节点选择器，旁路加载，失败时保留上次结果不阻断应用列表。 */
+    private fun refreshNodeTags(revision: Long) {
+        val catalog = nodeCatalog ?: return
+        nodeTagsJob?.cancel()
+        nodeTagsJob = viewModelScope.launch {
+            val tags = try {
+                catalog.snapshot().groups
+                    .flatMap { group -> group.nodes.map { node -> node.tag } }
+                    .distinct()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                null
+            }
+            if (tags != null && revision == loadRevision) {
+                _state.update { it.copy(nodeTags = tags) }
+            }
+        }
+    }
+
     fun setProxySettings(enabled: Boolean, mode: String? = null) {
         editPolicy { it.copy(enabled = enabled, mode = if (enabled && mode != null) mode else it.mode) }
     }
@@ -127,8 +153,18 @@ internal class AppsViewModel(
         editPolicy { config ->
             val items = activeItems(config)
             val updated = (if (appId in items) items - appId else items + appId).toList()
-            if (config.mode == "blacklist") config.copy(bypassApps = updated) else config.copy(proxyApps = updated)
+            val next = if (config.mode == "blacklist") config.copy(bypassApps = updated) else config.copy(proxyApps = updated)
+            // 白名单取消勾选后绑定失去作用，一并清除，避免应用重新勾选时恢复过期节点。
+            if (config.mode != "blacklist" && appId in items) {
+                next.copy(bindings = next.bindings.filterNot { it.app == appId })
+            } else {
+                next
+            }
         }
+    }
+
+    fun setBinding(appId: String, outbound: String) {
+        editPolicy { config -> config.copy(bindings = config.bindings.withBinding(appId, outbound)) }
     }
 
     private fun editPolicy(transform: (AppProxyConfig) -> AppProxyConfig) {
@@ -255,6 +291,7 @@ internal class AppsViewModel(
                 proxyApps = proxyApps,
                 bypassApps = bypassApps,
                 proxiedApps = activeItems(config.mode, proxyApps, bypassApps),
+                appBindings = config.bindings.associate { it.app to it.outbound },
                 hasPendingPolicy = draftConfig != null || it.isSavingPolicy,
                 error = error
             )
@@ -264,7 +301,8 @@ internal class AppsViewModel(
     private fun policyChanged(config: AppProxyConfig) =
         config.enabled != confirmedConfig.enabled || config.mode != confirmedConfig.mode ||
             config.proxyApps.toSet() != confirmedConfig.proxyApps.toSet() ||
-            config.bypassApps.toSet() != confirmedConfig.bypassApps.toSet()
+            config.bypassApps.toSet() != confirmedConfig.bypassApps.toSet() ||
+            config.bindings.toSet() != confirmedConfig.bindings.toSet()
 
 }
 

@@ -20,6 +20,8 @@ data class AppsUiState(
     val proxyApps: Set<String> = emptySet(),
     val bypassApps: Set<String> = emptySet(),
     val proxiedApps: Set<String> = emptySet(),
+    val appBindings: Map<String, String> = emptyMap(),
+    val nodeTags: List<String> = emptyList(),
     val allApps: List<AppInfoModel> = emptyList(),
     val masterAppList: List<AppInfoModel> = emptyList(),
     val appSearchQuery: String = "",

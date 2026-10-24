@@ -15,7 +15,11 @@ internal class AppPolicyRepository(
     suspend fun config(): AppProxyConfig {
         val snapshot = configs.readSnapshot("inbound/app")
         val app = json.parseToJsonElement(snapshot.content).jsonObject.getValue("app").jsonObject
-        require(app.keys == setOf("enabled", "mode", "proxy_apps", "bypass_apps")) { "模块返回的应用策略字段不完整" }
+        // bindings 是可选字段：旧模块文件没有它时按空绑定处理，出现时必须与四个既有字段一起出现。
+        require(app.keys.containsAll(setOf("enabled", "mode", "proxy_apps", "bypass_apps")) &&
+            app.keys.all { it in setOf("enabled", "mode", "proxy_apps", "bypass_apps", "bindings") }) {
+            "模块返回的应用策略字段不完整"
+        }
         return json.decodeFromJsonElement(AppProxyConfig.serializer(), app)
             .copy(revision = snapshot.revision)
     }

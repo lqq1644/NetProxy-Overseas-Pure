@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Android
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +73,8 @@ import com.fanjv.netproxy.core.ui.component.StatusTag
 import com.fanjv.netproxy.core.ui.component.rememberBlurBackdrop
 import com.fanjv.netproxy.core.ui.component.rememberCommitOnLeave
 import com.fanjv.netproxy.feature.apps.data.AppIconCache
+import com.fanjv.netproxy.feature.apps.model.APP_BINDING_DIRECT
+import com.fanjv.netproxy.feature.apps.model.APP_BINDING_FOLLOW_MAIN
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownImpl
@@ -91,6 +94,7 @@ import top.yukonga.miuix.kmp.basic.rememberPullToRefreshState
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.MoreCircle
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
@@ -147,6 +151,7 @@ internal fun AppsScreen(
     val apps by viewModel.state.collectAsStateWithLifecycle()
     val spacing = 10.dp
     val showAppControls = apps.hasLoadedApps && apps.appProxyEnabled
+    var bindingApp by remember { mutableStateOf<AppInfoModel?>(null) }
 
     val searchStatus = rememberSaveable(saver = SearchStatus.Saver) { SearchStatus("") }
     val listState = rememberLazyListState()
@@ -324,7 +329,9 @@ internal fun AppsScreen(
                             key = AppInfoModel::id,
                             contentType = { "app_item" },
                         ) { app ->
-                            AppItem(app, apps.appShowPackageName, app.id in apps.proxiedApps, spacing) {
+                            AppItem(app, apps.appShowPackageName, app.id in apps.proxiedApps, spacing,
+                                bindingSummary = bindingSummary(apps, app),
+                                onBindingClick = { bindingApp = app }) {
                                 if (apps.appSelectedFirst) {
                                     // 重排时保持视口位置，不跟随已选条目的 key 上移。
                                     searchListState.requestScrollToItem(
@@ -416,6 +423,8 @@ internal fun AppsScreen(
                                             apps.appShowPackageName,
                                             app.id in apps.proxiedApps,
                                             spacing,
+                                            bindingSummary = bindingSummary(apps, app),
+                                            onBindingClick = { bindingApp = app },
                                         ) { viewModel.toggle(app.id) }
                                     }
                                 }
@@ -429,7 +438,72 @@ internal fun AppsScreen(
                 }
             }
         }
+
+        val sheetApp = bindingApp
+        OverlayBottomSheet(
+            show = sheetApp != null,
+            title = sheetApp?.label.orEmpty(),
+            onDismissRequest = { bindingApp = null }
+        ) {
+            if (sheetApp != null) {
+                val current = apps.appBindings[sheetApp.id]
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    BindingOption(
+                        label = stringResource(R.string.app_node_follow_main),
+                        selected = current == null || current == APP_BINDING_FOLLOW_MAIN,
+                    ) {
+                        viewModel.setBinding(sheetApp.id, APP_BINDING_FOLLOW_MAIN)
+                        bindingApp = null
+                    }
+                    apps.nodeTags.forEach { tag ->
+                        BindingOption(label = tag, selected = current == tag) {
+                            viewModel.setBinding(sheetApp.id, tag)
+                            bindingApp = null
+                        }
+                    }
+                    BindingOption(
+                        label = stringResource(R.string.app_node_direct),
+                        selected = current == APP_BINDING_DIRECT,
+                    ) {
+                        viewModel.setBinding(sheetApp.id, APP_BINDING_DIRECT)
+                        bindingApp = null
+                    }
+                }
+            }
+        }
     }
+}
+
+/** 白名单中已勾选应用的绑定摘要；未绑定时返回 null，条目不展示专属节点行。 */
+@Composable
+private fun bindingSummary(apps: AppsUiState, app: AppInfoModel): String? {
+    if (apps.appProxyMode != "whitelist" || app.id !in apps.proxyApps) return null
+    return when (val outbound = apps.appBindings[app.id]) {
+        null, APP_BINDING_FOLLOW_MAIN -> stringResource(R.string.app_node_follow_main)
+        APP_BINDING_DIRECT -> stringResource(R.string.app_node_direct)
+        else -> outbound
+    }
+}
+
+@Composable
+private fun BindingOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    BasicComponent(
+        title = label,
+        onClick = onClick,
+        endActions = {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = colorScheme.primary
+                )
+            }
+        }
+    )
 }
 
 @Composable
@@ -461,6 +535,8 @@ private fun AppItem(
     showPackageName: Boolean,
     isProxied: Boolean,
     spacing: androidx.compose.ui.unit.Dp,
+    bindingSummary: String? = null,
+    onBindingClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
     Card(
@@ -522,6 +598,13 @@ private fun AppItem(
                     softWrap = false
                 )
             }
+        }
+        if (bindingSummary != null) {
+            BasicComponent(
+                title = stringResource(R.string.app_node_binding),
+                summary = bindingSummary,
+                onClick = onBindingClick
+            )
         }
     }
 }
