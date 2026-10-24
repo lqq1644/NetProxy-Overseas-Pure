@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -91,6 +92,8 @@ type RuntimeResult struct {
 	SelectedNodeRef string                 `json:"selected_node_ref"`
 	GroupCount      int                    `json:"group_count"`
 	NodeCount       int                    `json:"node_count"`
+	// NodeTags 是展开到运行时顶层出站的单节点 tag 集合，仅供进程内绑定编译校验，不进入 schema=1 输出。
+	NodeTags []string `json:"-"`
 }
 
 type ScheduleResult struct {
@@ -409,7 +412,8 @@ func BuildRuntime(ctx context.Context, options RuntimeOptions) (RuntimeResult, e
 		return RuntimeResult{}, err
 	}
 	activeTag, _ := selection.RuntimeTargets(runtimeTag)
-	if err := writeRuntimeOutbounds(options.OutboundsOutput, groups, activeTag); err != nil {
+	expanded := expandGroupNodes(ctx, groups)
+	if err := writeRuntimeOutbounds(options.OutboundsOutput, groups, activeTag, expanded); err != nil {
 		return RuntimeResult{}, err
 	}
 
@@ -417,6 +421,8 @@ func BuildRuntime(ctx context.Context, options RuntimeOptions) (RuntimeResult, e
 	for _, group := range groups {
 		nodeCount += group.Metadata.NodeCount
 	}
+	nodeTags := slices.Clone(expanded.tags)
+	sort.Strings(nodeTags)
 	result := RuntimeResult{
 		Selection:       selection,
 		ActiveGroup:     selection.ActiveGroupID,
@@ -425,6 +431,7 @@ func BuildRuntime(ctx context.Context, options RuntimeOptions) (RuntimeResult, e
 		SelectedNodeRef: selection.Ref(),
 		GroupCount:      len(groups),
 		NodeCount:       nodeCount,
+		NodeTags:        nodeTags,
 	}
 	return result, nil
 }
@@ -527,11 +534,83 @@ func writeRuntimeProviders(path string, groups []*loadedGroup) error {
 	}{Providers: items})
 }
 
-func writeRuntimeOutbounds(path string, groups []*loadedGroup, defaultTag string) error {
+// expandedNodes 汇总各分组展开到运行时顶层的单节点出站与端点。
+type expandedNodes struct {
+	outbounds []option.Outbound
+	endpoints []option.Endpoint
+	tags      []string
+}
+
+// expandGroupNodes 把每个分组 Provider 文档中的单节点复制为顶层出站。
+// BuildRuntime 的既有契约只依赖分组元数据，单个分组文档损坏时仅跳过该组展开，
+// 不能阻断其余分组与选择逻辑；损坏文档会在核心 check 阶段经 providers.json 暴露。
+func expandGroupNodes(ctx context.Context, groups []*loadedGroup) expandedNodes {
+	allocator := newRuntimeTagAllocator(groups)
+	expanded := expandedNodes{}
+	for _, group := range groups {
+		document, err := provider.LoadAllowEmpty(ctx, group.ProviderPath)
+		if err != nil {
+			continue
+		}
+		for _, outbound := range document.Outbounds {
+			if outbound.Type == C.TypeSelector || outbound.Type == C.TypeURLTest {
+				continue
+			}
+			outbound.Tag = allocator.take(outbound.Tag, outbound.Type)
+			expanded.outbounds = append(expanded.outbounds, outbound)
+			expanded.tags = append(expanded.tags, outbound.Tag)
+		}
+		for _, endpoint := range document.Endpoints {
+			endpoint.Tag = allocator.take(endpoint.Tag, endpoint.Type)
+			expanded.endpoints = append(expanded.endpoints, endpoint)
+			expanded.tags = append(expanded.tags, endpoint.Tag)
+		}
+	}
+	return expanded
+}
+
+// runtimeTagAllocator 为展开节点分配全局唯一的运行时 tag。
+type runtimeTagAllocator struct {
+	used map[string]int
+}
+
+func newRuntimeTagAllocator(groups []*loadedGroup) *runtimeTagAllocator {
+	allocator := &runtimeTagAllocator{used: make(map[string]int)}
+	for _, tag := range []string{"direct", "block", "Proxy"} {
+		allocator.used[tag] = 1
+	}
+	for _, group := range groups {
+		allocator.used["Auto/"+group.RuntimeTag] = 1
+		allocator.used["Select/"+group.RuntimeTag] = 1
+	}
+	return allocator
+}
+
+// take 与 provider.NormalizeTags 使用同一消歧规则：首个占用者保留原 tag，后续同名依次追加 _2、_3。
+func (a *runtimeTagAllocator) take(tag, fallback string) string {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		tag = fallback
+	}
+	a.used[tag]++
+	if a.used[tag] == 1 {
+		return tag
+	}
+	for suffix := a.used[tag]; ; suffix++ {
+		candidate := fmt.Sprintf("%s_%d", tag, suffix)
+		if a.used[candidate] == 0 {
+			a.used[candidate] = 1
+			return candidate
+		}
+	}
+}
+
+func writeRuntimeOutbounds(path string, groups []*loadedGroup, defaultTag string, expanded expandedNodes) error {
 	outbounds := []option.Outbound{
 		{Type: C.TypeDirect, Tag: "direct", Options: new(option.DirectOutboundOptions)},
 		{Type: C.TypeBlock, Tag: "block", Options: new(option.StubOptions)},
 	}
+	outbounds = append(outbounds, expanded.outbounds...)
 	options := make([]string, 0, len(groups)*2)
 	for _, group := range groups {
 		autoTag := "Auto/" + group.RuntimeTag
@@ -568,26 +647,30 @@ func writeRuntimeOutbounds(path string, groups []*loadedGroup, defaultTag string
 			InterruptExistConnections: true,
 		},
 	})
-	return writeRuntimeOutboundsAtomic(path, outbounds)
+	return writeRuntimeOutboundsAtomic(path, outbounds, expanded.endpoints)
 }
 
-func writeRuntimeOutboundsAtomic(path string, outbounds []option.Outbound) error {
+func writeRuntimeOutboundsAtomic(path string, outbounds []option.Outbound, endpoints []option.Endpoint) error {
 	content, err := SJSON.MarshalContext(provider.RuntimeContext(context.Background()), struct {
 		Outbounds []option.Outbound `json:"outbounds"`
-	}{Outbounds: outbounds})
+		Endpoints []option.Endpoint `json:"endpoints,omitempty"`
+	}{Outbounds: outbounds, Endpoints: endpoints})
 	if err != nil {
 		return err
 	}
 	var document struct {
 		Outbounds []map[string]jsontext.Value `json:"outbounds"`
+		Endpoints []map[string]jsontext.Value `json:"endpoints,omitempty"`
 	}
 	if err := json.Unmarshal(content, &document); err != nil {
 		return err
 	}
-	for _, outbound := range document.Outbounds {
-		for _, field := range []string{"outbounds", "providers"} {
-			if value, exists := outbound[field]; exists && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
-				delete(outbound, field)
+	for _, entries := range [][]map[string]jsontext.Value{document.Outbounds, document.Endpoints} {
+		for _, entry := range entries {
+			for _, field := range []string{"outbounds", "providers"} {
+				if value, exists := entry[field]; exists && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+					delete(entry, field)
+				}
 			}
 		}
 	}

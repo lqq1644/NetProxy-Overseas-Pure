@@ -23,11 +23,19 @@ type Config struct {
 	TUN        jsontext.Value `json:"tun"`
 }
 
+// AppBinding 把一个应用引用绑定到指定出站 tag；出站存在性在运行时组装阶段校验，
+// 节点可能来自后续才导入的分组，保存时不因 tag 尚未出现而拒绝。
+type AppBinding struct {
+	App      string `json:"app"`
+	Outbound string `json:"outbound"`
+}
+
 type AppPolicy struct {
-	Enabled    bool     `json:"enabled"`
-	Mode       string   `json:"mode"`
-	ProxyApps  []string `json:"proxy_apps"`
-	BypassApps []string `json:"bypass_apps"`
+	Enabled    bool         `json:"enabled"`
+	Mode       string       `json:"mode"`
+	ProxyApps  []string     `json:"proxy_apps"`
+	BypassApps []string     `json:"bypass_apps"`
+	Bindings   []AppBinding `json:"bindings,omitempty"`
 }
 
 type Diagnostic struct {
@@ -165,6 +173,20 @@ func (c Config) validateOuter() error {
 				return err
 			}
 		}
+	}
+	seenBindings := make(map[PackageRef]bool, len(c.App.Bindings))
+	for _, binding := range c.App.Bindings {
+		ref, err := ParsePackageRef(binding.App)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(binding.Outbound) == "" {
+			return validationError("inbound.binding_outbound_empty", "app.bindings", "应用绑定的出站不能为空")
+		}
+		if seenBindings[ref] {
+			return validationError("inbound.binding_duplicate", "app.bindings", "同一应用不能重复绑定: "+ref.String())
+		}
+		seenBindings[ref] = true
 	}
 	return nil
 }
