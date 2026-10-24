@@ -1,14 +1,6 @@
 name: KernelSU 正式版分发
 
 on:
-  workflow_call:
-    inputs:
-      tag:
-        type: string
-        required: true
-    secrets:
-      DIST_REPO_TOKEN:
-        required: true
   workflow_dispatch:
     inputs:
       tag:
