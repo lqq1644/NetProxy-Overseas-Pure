@@ -454,3 +454,17 @@ Go 生命周期控制器通过 `-c config/singbox/config.json` 加载静态配�
 - Catalog 元数据、订阅 Header 和 Provider 权限必须限制为 Root 可读。
 - LAN 控制、CORS、Private Network Access 和远程鉴权变更属于安全设计，必须单独评审。
 - 配置保存遵循「候选文件 -> 完整检查 -> 原子替换 -> reload」；检查失败恢复磁盘和编辑器状态，不留下半应用配置。
+
+## 海外纯净分应用定制版契约
+
+本仓库是 Fanju6/NetProxy-Magisk 的 fork（维护者 lqq1644）。以下约束为 fork 新增，与上文冲突时以本节为准。
+
+- 分应用绑定持久化在 inbound `app.bindings`，元素为 `{app: "<user-id>:<package>", outbound: <tag>}`；同一应用引用只允许一条（校验失败报 `inbound.binding_duplicate`），出站为空报 `inbound.binding_outbound_empty`。
+- 绑定出站只能是展开后的节点 tag、`Proxy` 或 `direct`；指向不存在出站的绑定不生成规则，Prepare 逐条告警并经 `PrepareResult.SkippedBindings` 进程内提示，不写入 schema=1 输出。
+- 「跟随主节点」不写 `outbound=Proxy` 的绑定记录，而是直接不保留该应用的绑定；管理器选择器、CLI `app bind <ref> Proxy` 与 WebUI 共用这一口径。
+- 绑定编译为 `package_name` 路由规则；sing-box 的 `package_name` 无法按 Android 用户区分，多用户同包名只生成一条规则、以持久顺序中首条绑定为准。
+- `app bind` 覆盖同应用旧绑定，`app unbind` 只删绑定不改名单；`app remove` 与名单移除应用时同步清除其绑定。`bind` 不自动把应用加入名单、不自动启用策略。
+- 绑定规则在运行时有效主配置中的插入位置：位于 hijack-dns 规则与三条内置防护规则之后。防护规则特征（`isGuardRule`）：紧随 hijack-dns 的 `ip_cidr` 含 `::/0` 的 reject 规则、`protocol` 含 `quic` 的 reject 规则、`network=udp` 且端口含 443 的 reject 规则；普通 logical reject 不算防护规则。无 hijack-dns 时回退到 sniff 之后，再回退到首条 Direct 模式规则之后。
+- Catalog 运行时展开把各分组单节点与 endpoints 提升为顶层 outbounds；标签分配器先预占 `direct`、`block`、`Proxy` 与每组的 `Auto/<组名>`、`Select/<组名>`，节点同名冲突与 `provider.NormalizeTags` 同规则追加 `_2`、`_3` 消歧。
+- 海外纯净默认：模板主配置不含 geosite/geoip 规则集与分流规则，`route.final` 与 Rule 兜底均为 `direct`，DNS 仅保留 Cloudflare/Google 并使用 `ipv4_only`，eBPF 两套 `bypass_rule_set` 为空，入站 `root_policy` 默认为 `exclude`，分应用策略默认开启白名单（空名单，等于全直连）。离线测速会话（`internal/service/offline_delay.go`）自带 DNS 口径与模板一致（Cloudflare/Google、`ipv4_only`），其 `dns-direct` 标签仅表示会话内部的直连解析组。代码与模板都不许回填阿里/腾讯等大陆 DNS 或 CN 规则集。
+- `tests/default_config_test.mjs` 是上述默认口径的守门测试；改默认模板或离线测速 DNS 前先同步它的断言，断言与实现不一致时按本节口径修实现或断言，不许删断言放行。
