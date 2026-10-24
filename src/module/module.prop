@@ -1,8 +1,8 @@
 id=netproxy
-name=NetProxy
+name=NetProxy Overseas Pure（海外纯净分应用版）
 version=v8.6.1
 versionCode=5
 author=Fanju
-description=基于 sing-box 内核的透明代理工具
+description=基于 sing-box 内核的海外纯净分应用透明代理（Fanju6/NetProxy-Magisk 定制版，fork 维护者 lqq1644）
 updateJson=https://github.com/Fanju6/NetProxy-Magisk/releases/latest/download/update.json
 webuiIcon=webroot/netproxy/favicon.svg
