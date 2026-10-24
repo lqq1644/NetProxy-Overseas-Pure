@@ -6,6 +6,7 @@ import androidx.compose.runtime.saveable.SaverScope
 import com.fanjv.netproxy.core.config.*
 import com.fanjv.netproxy.core.ui.component.SearchStatus
 import com.fanjv.netproxy.feature.apps.data.*
+import com.fanjv.netproxy.feature.apps.model.AppBinding
 import com.fanjv.netproxy.feature.apps.model.AppProxyConfig
 import com.fanjv.netproxy.feature.settings.data.ConfigRepository
 import java.io.File
@@ -639,6 +640,37 @@ class AppsViewModelTest {
         job.join()
         assertTrue(job.isCancelled)
         assertEquals(10, lookups.get())
+    }
+
+    @Test fun bindingSelectionIsDraftedAndSavedWithPolicy() = runBlocking {
+        val transport = Transport()
+        val vm = model(this, transport)
+        vm.load(); vm.loaded()
+        vm.setBinding("0:alpha.example", "China")
+        assertEquals(mapOf("0:alpha.example" to "China"), vm.state.value.appBindings)
+        assertTrue(vm.state.value.hasPendingPolicy)
+        assertEquals(0, transport.writes)
+        assertTrue(vm.flushPolicy())
+        assertEquals(listOf(AppBinding("0:alpha.example", "China")), transport.config.bindings)
+        assertEquals(1, transport.writes)
+        vm.setBinding("0:alpha.example", "Proxy")
+        assertTrue(vm.state.value.appBindings.isEmpty())
+        assertTrue(vm.flushPolicy())
+        assertEquals(emptyList<AppBinding>(), transport.config.bindings)
+        assertEquals(2, transport.writes)
+    }
+
+    @Test fun uncheckingWhitelistedAppDropsItsBinding() = runBlocking {
+        val transport = Transport()
+        val vm = model(this, transport)
+        vm.load(); vm.loaded()
+        vm.toggle("0:alpha.example")
+        vm.setBinding("0:alpha.example", "China")
+        vm.toggle("0:alpha.example")
+        assertTrue(vm.state.value.appBindings.isEmpty())
+        assertFalse(vm.state.value.hasPendingPolicy)
+        assertTrue(vm.flushPolicy())
+        assertEquals(0, transport.writes)
     }
 
     @Test fun forceRefreshReloadsListingLabelsWithoutClearingIcons() = runBlocking {
