@@ -54,7 +54,8 @@ internal class NetProxyViewModelFactory(
             AppsViewModel::class.java -> AppsViewModel(
                 container.appPolicyRepository,
                 container.appPackageRepository,
-                writes = container.configurationWrites
+                writes = container.configurationWrites,
+                nodeCatalog = container.nodeRepository
             )
 
             SettingsViewModel::class.java -> SettingsViewModel(
@@ -65,7 +66,10 @@ internal class NetProxyViewModelFactory(
             InboundViewModel::class.java -> InboundViewModel(container.inboundRepository,
                 writes = container.configurationWrites)
 
-            RoutingRulesViewModel::class.java -> RoutingRulesViewModel(container.configRepository)
+            RoutingRulesViewModel::class.java -> RoutingRulesViewModel(
+                container.configRepository,
+                packageCatalog = container.appPackageRepository
+            )
 
             SingBoxConfigViewModel::class.java -> SingBoxConfigViewModel(
                 container.configRepository,

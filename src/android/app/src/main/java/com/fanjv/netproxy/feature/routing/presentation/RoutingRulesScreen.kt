@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -50,13 +51,16 @@ import com.fanjv.netproxy.core.ui.component.CardItem
 import com.fanjv.netproxy.core.ui.component.ContentStatus
 import com.fanjv.netproxy.core.ui.component.groupedCardSection
 import com.fanjv.netproxy.core.ui.component.rememberBlurBackdrop
+import com.fanjv.netproxy.feature.apps.presentation.AppIcon
 import com.fanjv.netproxy.feature.routing.model.LocalRuleSet
 import com.fanjv.netproxy.feature.routing.model.RuleField
 import com.fanjv.netproxy.feature.routing.model.RuleInputError
 import com.fanjv.netproxy.feature.routing.model.simpleRule
 import com.fanjv.netproxy.navigation.LocalNavigator
 import com.fanjv.netproxy.navigation.Route
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
@@ -139,6 +143,7 @@ internal fun RoutingRulesScreen(
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary, textAlign = TextAlign.Center)
                 Text(stringResource(R.string.routing_empty_hint), style = MiuixTheme.textStyles.footnote1,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary, textAlign = TextAlign.Center)
+                PerAppBindingCard(Modifier.padding(top = 8.dp)) { navigator.push(Route.Apps) }
             }
         } else LazyColumn(
             modifier = Modifier.fillMaxSize()
@@ -175,6 +180,9 @@ internal fun RoutingRulesScreen(
                 } },
                 titleTopPadding = 8.dp,
             )
+            item("per_app_binding") {
+                PerAppBindingCard(Modifier.padding(top = 2.dp)) { navigator.push(Route.Apps) }
+            }
             item("bottom") { Spacer(Modifier.height(24.dp).navigationBarsPadding()) }
         }
     }
@@ -184,7 +192,9 @@ internal fun RoutingRulesScreen(
     SideEffect { if (state.draft != null) retainedDraft = state.draft }
     OverlayDialog(show = state.draft != null, title = stringResource(if (draft?.index == null) R.string.routing_add else R.string.routing_edit),
         onDismissRequest = viewModel::dismiss, onDismissFinished = { retainedDraft = null }) {
-        if (draft != null) {
+        if (state.showAppPicker) {
+            AppPickerContent(state, viewModel)
+        } else if (draft != null) {
             val file = state.files.getValue(draft.target)
             val textState = rememberTextFieldState(draft.text)
             LaunchedEffect(textState, draft.field) {
@@ -216,6 +226,10 @@ internal fun RoutingRulesScreen(
                             modifier = Modifier.fillMaxWidth(), enabled = !state.isSaving)
                         Text(stringResource(field.hint()), style = MiuixTheme.textStyles.footnote2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        if (field == RuleField.PackageName) {
+                            TextButton(stringResource(R.string.routing_select_app), { viewModel.openAppPicker() },
+                                Modifier.fillMaxWidth(), enabled = !state.isSaving)
+                        }
                     } else {
                         Text(stringResource(R.string.routing_advanced_hint), style = MiuixTheme.textStyles.body2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
@@ -250,6 +264,50 @@ internal fun RoutingRulesScreen(
             RuleButtons(state.isSaving, viewModel::dismiss,
                 confirm = viewModel::delete, enabled = target?.let(state::editable) == true, confirmLabel = stringResource(R.string.common_delete))
         }
+    }
+}
+
+@Composable
+private fun PerAppBindingCard(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(modifier.fillMaxWidth()) {
+        ArrowPreference(
+            title = stringResource(R.string.routing_per_app_binding),
+            summary = stringResource(R.string.routing_per_app_binding_hint),
+            onClick = onClick,
+        )
+    }
+}
+
+@Composable
+private fun AppPickerContent(state: RoutingRulesState, viewModel: RoutingRulesViewModel) {
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(state.pickerApps, query) {
+        state.pickerApps.filter {
+            query.isBlank() || it.label.contains(query, ignoreCase = true) ||
+                it.packageName.contains(query, ignoreCase = true)
+        }
+    }
+    Column(Modifier.heightIn(max = 500.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TextField(value = query, onValueChange = { query = it },
+            label = stringResource(R.string.routing_search_apps), modifier = Modifier.fillMaxWidth())
+        when {
+            state.isLoadingPickerApps -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                InfiniteProgressIndicator(Modifier.size(24.dp))
+            }
+            filtered.isEmpty() -> Text(stringResource(R.string.routing_no_apps),
+                style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            else -> LazyColumn(Modifier.weight(1f, fill = false).heightIn(max = 320.dp)) {
+                items(filtered, key = { it.id }) { app ->
+                    BasicComponent(
+                        title = app.label,
+                        summary = app.packageName,
+                        startAction = { AppIcon(app, Modifier.padding(end = 12.dp)) },
+                        onClick = { viewModel.pickApp(app.packageName) },
+                    )
+                }
+            }
+        }
+        TextButton(stringResource(android.R.string.cancel), viewModel::closeAppPicker, Modifier.fillMaxWidth())
     }
 }
 
