@@ -2,7 +2,7 @@
   <img src="docs/public/N.svg" alt="NetProxy Logo" width="120" />
 </p>
 
-<h1 align="center">NetProxy</h1>
+<h1 align="center">NetProxy Overseas Pure Per-App Edition（海外纯净分应用定制版）</h1>
 
 <p align="center">
   <strong>Android 系统级 sing-box 透明代理模块</strong><br>
@@ -34,9 +34,18 @@
 
 ## 项目简介
 
+> 本仓库是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 的 fork（基于 v8.6.1），由 lqq1644 维护的海外纯净分应用定制版。原作者 Fanju6，许可证仍为 [GPL-3.0](LICENSE)。定制内容见下方「与上游的差异（定制版）」。
+
 NetProxy 是面向已 Root Android 设备的系统级透明代理模块，支持 **Magisk、KernelSU 与 APatch**。使用 sing-box，通过 eBPF 或 TUN + auto_redirect 接管流量。
 
 日常操作可使用随模块提供的 Android 管理器，也可通过终端式模块 WebUI、CLI 或 sing-box Dashboard 管理。节点与订阅在服务停止时仍可浏览和编辑。
+
+## 与上游的差异（定制版）
+
+- **分应用专属节点绑定**：`inbound/app` 分区新增 `bindings`，每个白名单应用可单独指定出站节点；管理器（白名单条目内专属节点选择器）、模块 WebUI 与 CLI（`app bind <用户ID>:<包名> <出站>` / `app unbind`）三端口径一致。「跟随主节点」不写绑定记录，而是直接不保留该应用的绑定。
+- **Catalog 单节点顶层展开**：运行时 outbounds 除 `Auto/<组>`、`Select/<组>`、`Proxy` 外，还把各分组的单节点与 endpoints 展开为顶层出站，绑定可直接指向节点 tag；标签冲突按 `NormalizeTags` 规则追加 `_2`、`_3` 消歧。
+- **海外纯净默认预设**：默认配置不再包含 geosite/geoip 规则集与分流规则，`route.final` 与 Rule 兜底均为直连，DNS 仅保留 Cloudflare/Google 并使用 `ipv4_only`，入站 `root_policy` 默认为 `exclude`，分应用策略默认开启白名单（空名单，等于全直连）。
+- **内置协议防护**：主配置在 hijack-dns 规则后内置 IPv6（`::/0`）拒绝、QUIC 拒绝与 UDP 443 拒绝三条规则；分应用绑定规则插入位置位于这三条防护规则之后，避免被绑定应用的 QUIC/IPv6 流量绕过防护先进入节点。
 
 ## 界面预览
 
