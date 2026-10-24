@@ -20,7 +20,7 @@ test('模块设置只有 module.json 默认文件，字段使用 JSON 原生类�
   })
 })
 
-test('默认配置仅保留部署、运行时生成、模式命名与原生 DNS 响应匹配差异', () => {
+test('默认配置仅保留部署、运行时生成、模式命名、原生 DNS 响应匹配与海外纯净差异', () => {
   const expected = structuredClone(upstream)
   expected.log.output = 'stderr'
   expected.experimental.cache_file.path = '/data/adb/modules/netproxy/config/singbox/cache.db'
@@ -57,7 +57,57 @@ test('默认配置仅保留部署、运行时生成、模式命名与原生 DNS 
   expected.route.rules.push({ clash_mode: 'Rule', action: 'route', outbound: expected.route.final })
   const directIndex = expected.route.rules.findIndex(rule => rule.clash_mode === 'Direct')
   expected.route.rules.unshift(...expected.route.rules.splice(directIndex, 1))
+  // 海外纯净差异：默认配置不引用 geosite/geoip 远程规则与大陆 DNS，删除相关服务器与分流规则；
+  // DNS 只保留 dns-proxy 组，Direct 模式的 DNS 规则随组删除改指 dns-proxy，去广告只用内置与 AWAvenue 规则集。
+  expected.dns.servers = expected.dns.servers.filter(server => !['dns-direct', 'ali', 'tencent'].includes(server.tag))
+  const hosts = expected.dns.servers.find(server => server.type === 'hosts')
+  delete hosts.predefined['doh.pub']
+  delete hosts.predefined['dns.alidns.com']
+  const referencesGeo = rule => list(rule.rule_set).some(tag => tag.startsWith('geosite/') || tag.startsWith('geoip/'))
+  expected.dns.rules = expected.dns.rules.filter(rule => !referencesGeo(rule))
+  expected.route.rules = expected.route.rules.filter(rule => !referencesGeo(rule))
+  const stripGeoAds = rules => {
+    for (const rule of rules) {
+      if (Array.isArray(rule.rule_set)) rule.rule_set = rule.rule_set.filter(tag => tag !== 'geosite/category-ads-all')
+      if (rule.rules) stripGeoAds(rule.rules)
+    }
+  }
+  stripGeoAds(expected.dns.rules)
+  stripGeoAds(expected.route.rules)
+  for (const rule of expected.dns.rules) {
+    if (rule.clash_mode === 'Direct') rule.server = 'dns-proxy'
+  }
+  expected.dns.strategy = 'ipv4_only'
+  expected.route.rule_set = expected.route.rule_set.filter(rule => !list(rule.tag).some(tag => tag.startsWith('geosite/') || tag.startsWith('geoip/')))
+  const hijackIndex = expected.route.rules.findIndex(rule => rule.action === 'hijack-dns')
+  expected.route.rules.splice(hijackIndex + 1, 0,
+    { ip_cidr: ['::/0'], action: 'reject' },
+    { protocol: 'quic', action: 'reject' },
+    { network: 'udp', port: 443, action: 'reject' })
+  expected.route.default_domain_resolver = 'dns-proxy'
+  expected.route.final = 'direct'
+  expected.route.rules.at(-1).outbound = 'direct'
   assert.deepEqual(config, expected)
+})
+
+test('海外纯净默认不引用 geosite/geoip 与大陆 DNS，兜底直连并内置协议防护', () => {
+  const ruleSetTags = config.route.rule_set.flatMap(rule => list(rule.tag))
+  assert.ok(ruleSetTags.every(tag => !tag.startsWith('geosite/') && !tag.startsWith('geoip/')))
+  const collectRuleSets = rules => rules.flatMap(rule => [...list(rule.rule_set), ...collectRuleSets(rule.rules ?? [])])
+  for (const tag of [...collectRuleSets(config.route.rules), ...collectRuleSets(config.dns.rules)]) {
+    assert.ok(!tag.startsWith('geosite/') && !tag.startsWith('geoip/'), tag)
+  }
+  const hijackIndex = config.route.rules.findIndex(rule => rule.action === 'hijack-dns')
+  assert.deepEqual(config.route.rules.slice(hijackIndex + 1, hijackIndex + 4), [
+    { ip_cidr: ['::/0'], action: 'reject' },
+    { protocol: 'quic', action: 'reject' },
+    { network: 'udp', port: 443, action: 'reject' },
+  ])
+  assert.equal(config.route.final, 'direct')
+  assert.equal(config.route.default_domain_resolver, 'dns-proxy')
+  assert.deepEqual(config.dns.servers.map(server => server.tag), ['dns-proxy', 'hosts', 'cloudflare', 'google'])
+  assert.equal(config.dns.strategy, 'ipv4_only')
+  assert.equal(config.dns.final, 'dns-proxy')
 })
 
 test('默认规则显式提供 Rule，保存其他默认模式后仍可切回', () => {
@@ -86,31 +136,26 @@ test('默认远程规则有对应的内置文件与更新来源', () => {
   }
 })
 
-test('eBPF 默认绕过引用与上游和静态规则一致', () => {
-  const localBypass = managed.ebpf.local.bypass_rule_set
-  const sharedBypass = managed.ebpf.shared.bypass_rule_set
-  const inbound = upstream.inbounds.find(inbound => inbound.type === 'ebpf')
-  assert.deepEqual(localBypass, inbound.local.bypass_rule_set)
-  assert.deepEqual(sharedBypass, inbound.shared.bypass_rule_set)
+test('eBPF 默认绕过为空，不引用任何静态规则集', () => {
+  assert.deepEqual(managed.ebpf.local.bypass_rule_set, [])
+  assert.deepEqual(managed.ebpf.shared.bypass_rule_set, [])
   assert.equal(Object.hasOwn(managed.ebpf, 'bypass_rule_set'), false)
-  const tags = config.route.rule_set.flatMap(rule => list(rule.tag))
-  for (const tag of [...localBypass, ...sharedBypass]) assert.ok(tags.includes(tag), `${tag} 未在静态配置声明`)
 })
 
 test('单一入站默认保留 eBPF 原生语义和禁用共享路径偏好', () => {
   assert.deepEqual(Object.keys(managed), ['backend', 'root_policy', 'app', 'ebpf', 'tun'])
-  assert.equal(managed.root_policy, 'include')
+  assert.equal(managed.root_policy, 'exclude')
   assert.equal(managed.backend, 'ebpf')
-  assert.deepEqual(managed.app, { enabled: false, mode: 'blacklist', proxy_apps: [], bypass_apps: [] })
+  assert.deepEqual(managed.app, { enabled: true, mode: 'whitelist', proxy_apps: [], bypass_apps: [] })
   assert.deepEqual(managed.ebpf, {
     type: 'ebpf', tag: 'netproxy-in', network: ['tcp', 'udp'], udp_timeout: '5m', tc_priority: 1,
     local: {
       enabled: true, data_plane: 'cgroup', dns_mode: 'respect_policy', ipv6: true,
-      bypass_private_address: true, bypass_rule_set: ['geoip/cn'],
+      bypass_private_address: true, bypass_rule_set: [],
     },
     shared: {
       enabled: false, data_plane: 'packet_rewrite', dns_mode: 'hijack', interface: ['wlan2'],
-      ipv6: true, bypass_private_address: true, bypass_rule_set: ['geoip/cn'],
+      ipv6: true, bypass_private_address: true, bypass_rule_set: [],
     },
   })
 })
