@@ -122,12 +122,78 @@ func spliceBindingRules(content []byte, rules []bindingRule) ([]byte, error) {
 }
 
 type bindingRuleProbe struct {
-	Action    string `json:"action"`
-	ClashMode string `json:"clash_mode"`
+	Action    string         `json:"action"`
+	ClashMode string         `json:"clash_mode"`
+	IPCIDR    []string       `json:"ip_cidr"`
+	Protocol  jsontext.Value `json:"protocol"`
+	Network   string         `json:"network"`
+	Port      jsontext.Value `json:"port"`
+}
+
+// isGuardRule 判断一条规则是否为海外纯净模板内置的防护规则。
+// 防护规则必须排在绑定规则之前：被绑定应用的 QUIC 与 IPv6 流量若先命中包名规则进入节点，
+// 会在单栈或 WebSocket 节点上触发协议错误与黑洞，防护就失去意义。
+func isGuardRule(raw jsontext.Value) bool {
+	var probe bindingRuleProbe
+	if err := json.Unmarshal(raw, &probe); err != nil || probe.Action != "reject" {
+		return false
+	}
+	for _, cidr := range probe.IPCIDR {
+		if cidr == "::/0" {
+			return true
+		}
+	}
+	if probeStringListContains(probe.Protocol, "quic") {
+		return true
+	}
+	return probe.Network == "udp" && probeIntListContains(probe.Port, 443)
+}
+
+// probeStringListContains 兼容 sing-box 列表字段的单值与数组两种写法。
+func probeStringListContains(raw jsontext.Value, want string) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var single string
+	if err := json.Unmarshal(raw, &single); err == nil {
+		return single == want
+	}
+	var list []string
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return false
+	}
+	for _, value := range list {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+// probeIntListContains 兼容 sing-box 端口字段的单值与数组两种写法。
+func probeIntListContains(raw jsontext.Value, want int) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var single int
+	if err := json.Unmarshal(raw, &single); err == nil {
+		return single == want
+	}
+	var list []int
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return false
+	}
+	for _, value := range list {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 // bindingInsertIndex 计算绑定规则的插入位置：绑定按应用分流，必须排在 DNS 劫持之后，
-// 否则应用的 DNS 流量会被直接送往节点而绕过 hijack-dns。
+// 否则应用的 DNS 流量会被直接送往节点而绕过 hijack-dns；
+// 模板内置防护规则紧随 hijack-dns，插入点必须越过它们，理由见 isGuardRule。
 func bindingInsertIndex(rules []jsontext.Value) int {
 	sniffIndex := -1
 	for index, raw := range rules {
@@ -136,7 +202,11 @@ func bindingInsertIndex(rules []jsontext.Value) int {
 			continue
 		}
 		if probe.Action == "hijack-dns" {
-			return index + 1
+			insert := index + 1
+			for insert < len(rules) && isGuardRule(rules[insert]) {
+				insert++
+			}
+			return insert
 		}
 		if probe.Action == "sniff" && sniffIndex < 0 {
 			sniffIndex = index

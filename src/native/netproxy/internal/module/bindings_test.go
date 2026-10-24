@@ -185,6 +185,19 @@ func TestBindingInsertIndexFallbacks(t *testing.T) {
 		want  int
 	}{
 		{"hijack-dns 优先", rules(`{"action":"sniff"}`, `{"action":"hijack-dns"}`, `{"action":"route"}`), 2},
+		{"跳过 hijack-dns 后的防护规则", rules(
+			`{"action":"sniff"}`,
+			`{"action":"hijack-dns"}`,
+			`{"ip_cidr":["::/0"],"action":"reject"}`,
+			`{"protocol":"quic","action":"reject"}`,
+			`{"network":"udp","port":443,"action":"reject"}`,
+			`{"action":"route"}`,
+		), 5},
+		{"普通 reject 不算防护规则", rules(
+			`{"action":"hijack-dns"}`,
+			`{"type":"logical","mode":"and","rules":[],"action":"reject"}`,
+			`{"action":"route"}`,
+		), 1},
 		{"无 hijack-dns 退到 sniff", rules(`{"action":"route"}`, `{"action":"sniff"}`), 2},
 		{"无两者时不越过 Direct 首条", rules(`{"clash_mode":"Direct","action":"route"}`, `{"action":"route"}`), 1},
 		{"无两者且首条非 Direct", rules(`{"action":"route"}`), 0},
