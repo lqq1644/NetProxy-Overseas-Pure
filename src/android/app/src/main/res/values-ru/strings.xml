@@ -200,6 +200,9 @@
     <string name="show_system_apps">Показывать системные приложения</string>
     <string name="app_proxy_mode_blacklist">Чёрный список</string>
     <string name="app_proxy_mode_whitelist">Белый список</string>
+    <string name="app_node_binding">Выделенный узел</string>
+    <string name="app_node_follow_main">Следовать за основным узлом</string>
+    <string name="app_node_direct">Напрямую</string>
     <string name="proxy_mode_off">Выключено</string>
     <string name="app_selected_first">Выбранные в начале</string>
     <string name="app_reverse_sort">Обратный порядок</string>
@@ -594,6 +597,11 @@
     <string name="routing_port">Порт назначения</string>
     <string name="routing_port_range">Диапазон портов назначения</string>
     <string name="routing_package_name">Имя пакета Android</string>
+    <string name="routing_per_app_binding">Привязка узла по приложению</string>
+    <string name="routing_per_app_binding_hint">Назначение отдельного узла приложениям из белого списка</string>
+    <string name="routing_select_app">Выбрать установленное приложение</string>
+    <string name="routing_search_apps">Поиск приложений</string>
+    <string name="routing_no_apps">Нет доступных приложений</string>
     <string name="routing_domain_suffix_hint">example.com соответствует этому домену и всем его поддоменам. Не вводите URL.</string>
     <string name="routing_domain_hint">www.example.com соответствует только этому домену. Не вводите URL.</string>
     <string name="routing_domain_keyword_hint">example соответствует доменам, содержащим этот текст.</string>
