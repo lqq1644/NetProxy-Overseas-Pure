@@ -2,6 +2,23 @@
 
 本页收录 GitHub Releases 中发布的正式版本，按发布时间倒序排列；不包含持续更新的 `nightly Pre-release`。
 
+## 海外纯净分应用定制版（基于 8.6.1）（2026-10-23）
+
+本条目记录本 fork（lqq1644/NetProxy-Overseas-Pure）相对上游 8.6.1 的定制变更，不属于上游正式版本。
+
+### 分应用专属节点
+
+- `inbound/app` 分区新增 `bindings`：白名单中每个应用可单独指定出站节点；管理器白名单条目内提供专属节点选择器（跟随主节点 / 节点 / 直连），WebUI 与 CLI 新增 `app bind <用户ID>:<包名> <出站>` / `app unbind`。
+- Catalog 运行时展开把各分组单节点与 endpoints 提升为顶层 outbounds，绑定可直接指向节点 tag；标签冲突按 `NormalizeTags` 规则追加 `_2`、`_3` 消歧。
+- 绑定编译为 `package_name` 路由规则；多用户同包名以首条绑定为准，指向不存在出站的绑定启动时跳过并告警；绑定规则插入位置位于 hijack-dns 与三条内置防护规则之后。
+
+### 海外纯净默认与协议防护
+
+- 默认配置删除全部 geosite/geoip 规则集与分流规则，`route.final` 与 Rule 兜底改直连，DNS 删除阿里/腾讯并改 `ipv4_only`，入站 `root_policy` 改 `exclude`，分应用策略默认开启白名单（空名单）。
+- 主配置在 hijack-dns 后内置 IPv6（`::/0`）拒绝、QUIC 拒绝与 UDP 443 拒绝三条规则；离线测速会话 DNS 同步改为 Cloudflare/Google。
+
+* * *
+
 ## 版本 8.6.1（2026-10-15）
 
 - 修复部分设备因应用图标或字体初始化异常，导致应用代理列表无法加载、提示“无法读取 Android 平台信息”的问题。
