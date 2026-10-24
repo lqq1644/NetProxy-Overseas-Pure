@@ -103,14 +103,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-              notes_file="$RUNNER_TEMP/nightly-notes.md"
+          notes_file="$RUNNER_TEMP/nightly-notes.md"
 
-              {
-                echo "版本: \`${VERSION}\` (build ${COMMIT_COUNT})"
-                echo "构建时间: ${TIMESTAMP}"
-                echo "提交: \`${SHORT_HASH}\`"
-              } > "$notes_file"
-              
+          {
+            echo "版本: \`${VERSION}\` (build ${COMMIT_COUNT})"
+            echo "构建时间: ${TIMESTAMP}"
+            echo "提交: \`${SHORT_HASH}\`"
+          } > "$notes_file"
+
           # 删除已有的 nightly 发布和 Tag
           gh release delete nightly --cleanup-tag -y || true
           
