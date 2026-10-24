@@ -19,7 +19,7 @@ function lcp(items: string[]): string {
   return p
 }
 
-export function complete(input: string, knownGroups: string[] = [], knownSubs: string[] = [], knownModes: string[] = []): CompletionResult {
+export function complete(input: string, knownGroups: string[] = [], knownSubs: string[] = [], knownModes: string[] = [], knownNodeTags: string[] = []): CompletionResult {
   if (input.startsWith('!')) return { completed: input, candidates: [] }
   const parsed = parseCommandTokens(input)
   const toks = parsed.map(token => token.value)
@@ -44,6 +44,9 @@ export function complete(input: string, knownGroups: string[] = [], knownSubs: s
       cands = knownGroups.filter(c => c.startsWith(cur))
     } else if (cmd === 'node' && NODE_OPS.includes(sub) && n === 2) {
       cands = knownGroups.filter(c => c.startsWith(cur))
+    } else if (cmd === 'app' && sub === 'bind' && n === 3) {
+      // 出站候选来自节点快照；Proxy（跟随主节点）与 direct（直连）是保留出站，始终可补全。
+      cands = ['Proxy', 'direct', ...knownNodeTags].filter(c => c.startsWith(cur))
     } else {
       const valueKey = toks.slice(0, n).join(' ')
       cands = (VALUE_COMPLETIONS[valueKey] || []).filter(c => c.startsWith(cur))

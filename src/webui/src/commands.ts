@@ -109,18 +109,22 @@ configured_backend 是保存的入站；active_backend 仅在 ready 且 PID/API 
   },
   app: {
     overview: 'app <命令>      分应用代理',
-    actions: ['list', 'mode', 'add', 'remove', 'enable', 'disable'],
+    actions: ['list', 'mode', 'add', 'remove', 'bind', 'unbind', 'enable', 'disable'],
     help: `app - 分应用代理
 
-  app list                    查看应用代理配置
+  app list                    查看应用代理配置（含节点绑定）
   app mode blacklist          使用黑名单模式
   app mode whitelist          使用白名单模式
   app add <用户ID>:<包名>      添加指定用户的应用
-  app remove <用户ID>:<包名>   移除指定用户的应用
+  app remove <用户ID>:<包名>   移除指定用户的应用（同时清除其节点绑定）
+  app bind <用户ID>:<包名> <出站>  把应用绑定到指定出站：节点 tag、direct 直连，或 Proxy 跟随主节点
+  app unbind <用户ID>:<包名>   删除应用的节点绑定
   app enable                  启用分应用代理
   app disable                 禁用分应用代理
 
 共用名单保存在 inbound.json 的 app 对象，运行时修改自动应用；只筛选本机应用。
+绑定保存在 app.bindings，跟随主节点用无绑定表示（bind 填 Proxy 或 unbind 都会删除绑定）。
+绑定只对已加入白名单的应用生效；出站 tag 在输入 app bind 后按 Tab 可从节点快照补全，保存时不校验 tag 是否存在，节点缺失时运行时跳过该绑定。
 `,
   },
   ebpf: {

@@ -1,4 +1,4 @@
-import { CONTRACT_SCHEMA, type CtlResult, type ExecResult, type InboundBackend, type ServiceBackendStatus } from './contract.ts'
+import { CONTRACT_SCHEMA, type AppBinding, type CtlResult, type ExecResult, type InboundBackend, type ServiceBackendStatus } from './contract.ts'
 
 const GROUP_DEFAULTS = {
   auto_update: false,
@@ -34,17 +34,17 @@ const MODULE_CONFIG = {
 
 const INBOUND_CONFIG = {
   backend: 'ebpf' as InboundBackend,
-  root_policy: 'include',
-  app: { enabled: false, mode: 'blacklist', proxy_apps: [] as string[], bypass_apps: [] as string[] },
+  root_policy: 'exclude',
+  app: { enabled: true, mode: 'whitelist', proxy_apps: [] as string[], bypass_apps: [] as string[] },
   ebpf: {
     type: 'ebpf', tag: 'netproxy-in', network: ['tcp', 'udp'], udp_timeout: '5m', tc_priority: 1,
     local: {
       enabled: true, data_plane: 'cgroup', dns_mode: 'respect_policy', ipv6: true,
-      bypass_private_address: true, bypass_rule_set: ['geoip/cn'],
+      bypass_private_address: true, bypass_rule_set: [] as string[],
     },
     shared: {
       enabled: false, data_plane: 'packet_rewrite', dns_mode: 'hijack', interface: ['wlan2'],
-      ipv6: true, bypass_private_address: true, bypass_rule_set: ['geoip/cn'],
+      ipv6: true, bypass_private_address: true, bypass_rule_set: [] as string[],
     },
   },
   tun: {
@@ -52,6 +52,15 @@ const INBOUND_CONFIG = {
     address: ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'],
     auto_route: true, auto_redirect: true, dns_mode: 'hijack',
   },
+}
+
+// 绑定不进 INBOUND_CONFIG：默认模板没有 bindings 字段，config read 需与模板逐字一致；
+// 有绑定时再合并进读取结果，与真实分区写入绑定后的落盘形态一致。
+let appBindings: AppBinding[] = []
+
+function inboundDocument() {
+  if (!appBindings.length) return INBOUND_CONFIG
+  return { ...INBOUND_CONFIG, app: { ...INBOUND_CONFIG.app, bindings: appBindings } }
 }
 
 const STATIC_CONFIG: Record<string, unknown> = {
@@ -146,6 +155,13 @@ function selection() {
   }
 }
 
+// 与 Go ParsePackageRef 对齐的 mock 校验：<非负整数>:<包名>，用户 ID 归一化为十进制。
+function parseMockPackageRef(value: string | undefined): string | undefined {
+  const match = /^(\d+):([A-Za-z0-9._]+)$/.exec(value ?? '')
+  if (!match) return undefined
+  return `${Number(match[1])}:${match[2]}`
+}
+
 function normalizeArgs(args: string[]): string[] {
   const result: string[] = []
   for (let index = 0; index < args.length; index += 1) {
@@ -209,11 +225,54 @@ function execute(args: string[]): CtlResult<unknown> {
     return response('mode.changed', '出站模式已切换', { mode: outboundMode })
   }
 
-  if (command === 'app' && action === 'list') {
-    return response('app.list', '分应用代理配置', {
-      enabled: INBOUND_CONFIG.app.enabled, mode: INBOUND_CONFIG.app.mode,
-      proxy_apps: INBOUND_CONFIG.app.proxy_apps.join(','), bypass_apps: INBOUND_CONFIG.app.bypass_apps.join(','),
+  if (command === 'app') {
+    const app = INBOUND_CONFIG.app
+    const view = () => ({
+      enabled: app.enabled, mode: app.mode,
+      proxy_apps: app.proxy_apps.join(','), bypass_apps: app.bypass_apps.join(','),
+      bindings: appBindings,
     })
+    if (action === 'list') return response('app.list', '分应用代理配置', view())
+    if (action === 'mode') {
+      if (clean[2] !== 'blacklist' && clean[2] !== 'whitelist') return failure('app.mode_invalid', '应用模式应为 blacklist 或 whitelist')
+      app.mode = clean[2]
+      app.enabled = true
+      return response('app.mode', '分应用模式已更新', view())
+    }
+    if (action === 'enable' || action === 'disable') {
+      app.enabled = action === 'enable'
+      return response(`app.${action}`, '分应用代理设置已更新', view())
+    }
+    if (action === 'bind' && clean.length !== 4) return failure('usage.invalid', '用法: app bind <用户ID>:<包名> <出站>')
+    if (action === 'add' || action === 'remove' || action === 'bind' || action === 'unbind') {
+      const ref = parseMockPackageRef(clean[2])
+      if (ref === undefined) return failure('app.package_invalid', '应用必须使用 <用户ID>:<包名> 格式')
+      if (action === 'add') {
+        const list = app.mode === 'whitelist' ? app.proxy_apps : app.bypass_apps
+        if (!list.includes(ref)) list.push(ref)
+        app.enabled = true
+        return response('app.add', '分应用代理设置已更新', view())
+      }
+      if (action === 'remove') {
+        app.proxy_apps = app.proxy_apps.filter(item => item !== ref)
+        app.bypass_apps = app.bypass_apps.filter(item => item !== ref)
+        // 与真实命令一致：应用离开名单时连带清除绑定。
+        appBindings = appBindings.filter(binding => binding.app !== ref)
+        return response('app.remove', '分应用代理设置已更新', view())
+      }
+      if (action === 'unbind') {
+        appBindings = appBindings.filter(binding => binding.app !== ref)
+        return response('app.unbind', '应用节点绑定已删除', view())
+      }
+      const outbound = clean[3].trim()
+      if (!outbound) return failure('app.binding_invalid', '应用绑定的出站不能为空')
+      // 跟随主节点用无绑定表示，与管理器选择器的口径一致，不写入 Proxy 绑定。
+      appBindings = outbound === 'Proxy'
+        ? appBindings.filter(binding => binding.app !== ref)
+        : [...appBindings.filter(binding => binding.app !== ref), { app: ref, outbound }]
+      return response('app.bind', '应用节点绑定已更新', view())
+    }
+    return failure('usage.invalid', '用法: app list|mode|add|remove|bind|unbind|enable|disable')
   }
 
   if (command === 'network' && action === 'wifi-list') {
@@ -272,8 +331,8 @@ function execute(args: string[]): CtlResult<unknown> {
     let content: unknown = {}
     if (document.id === 'module') content = MODULE_CONFIG
     else if (document.category === 'module') content = { [document.filename]: MODULE_CONFIG[document.filename as keyof typeof MODULE_CONFIG] }
-    else if (document.id === 'inbound') content = INBOUND_CONFIG
-    else if (document.category === 'inbound') content = { [document.filename]: INBOUND_CONFIG[document.filename as keyof typeof INBOUND_CONFIG] }
+    else if (document.id === 'inbound') content = inboundDocument()
+    else if (document.category === 'inbound') content = { [document.filename]: document.filename === 'app' ? inboundDocument().app : INBOUND_CONFIG[document.filename as keyof typeof INBOUND_CONFIG] }
     else if (document.id === 'runtime/inbound.json') content = { inbounds: [{ ...INBOUND_CONFIG.ebpf, shared: { enabled: false } }] }
     else if (document.id === 'runtime/providers.json') content = { providers: [] }
     else if (document.id === 'runtime/outbounds.json') content = { outbounds: [] }

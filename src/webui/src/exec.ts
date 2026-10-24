@@ -1,5 +1,5 @@
 import { exec } from 'kernelsu'
-import { decodeCtlResult, type CtlResult, type ExecResult } from './contract'
+import { decodeCtlResult, nodeTagsFromSnapshot, type CtlResult, type ExecResult } from './contract'
 import { mockCtl } from './mock'
 
 const CTL = '/data/adb/modules/netproxy/netproxyctl'
@@ -46,8 +46,11 @@ function isCatalogCompletion(value: unknown): value is CatalogCompletion {
 export async function completions() {
   const result = await ctlJson<unknown[]>(['catalog', 'list'])
   const groups = result.ok && Array.isArray(result.data) ? result.data.filter(isCatalogCompletion) : []
+  // 节点 tag 只供 app bind 的出站补全；快照失败时为空，仍可手输任意 tag。
+  const snapshot = await ctlJson<unknown>(['node', 'snapshot'])
   return {
     groups: groups.map(group => group.id),
-    subs: groups.filter(group => group.type === 'subscription').map(group => group.id)
+    subs: groups.filter(group => group.type === 'subscription').map(group => group.id),
+    nodeTags: snapshot.ok ? nodeTagsFromSnapshot(snapshot.data) : []
   }
 }

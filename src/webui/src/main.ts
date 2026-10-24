@@ -63,6 +63,7 @@ let lastResult = ''
 let knownGroups: string[] = []
 let knownSubscriptions: string[] = []
 let knownModes: string[] = []
+let knownNodeTags: string[] = []
 let completionRevision = 0
 let mascotActionSource = ''
 let mascotImpactSource = ''
@@ -132,6 +133,7 @@ async function refreshCompletions() {
     if (revision !== completionRevision) return
     knownGroups = result.groups
     knownSubscriptions = result.subs
+    knownNodeTags = result.nodeTags
   } catch {
     // 补全失败不影响终端命令执行。
   }
@@ -244,7 +246,7 @@ async function run(raw: string) {
 
 function completeInput(): boolean {
   if (busy || composing) return false
-  const result = complete(input.value, knownGroups, knownSubscriptions, knownModes)
+  const result = complete(input.value, knownGroups, knownSubscriptions, knownModes, knownNodeTags)
   if (!result.candidates.length) { closeSuggestions(); return false }
   setInput(result.completed)
   if (result.candidates.length > 1) {

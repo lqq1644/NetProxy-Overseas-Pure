@@ -21,6 +21,40 @@ export interface PrepareResult {
   backend: InboundBackend
 }
 
+export interface AppBinding {
+  app: string
+  outbound: string
+}
+
+export interface AppPolicyView {
+  enabled: boolean
+  mode: string
+  proxy_apps: string
+  bypass_apps: string
+  bindings: AppBinding[]
+}
+
+export interface NodeSnapshotView {
+  groups: { nodes: { tag: string }[] }[]
+}
+
+/** 从 node snapshot 返回中提取全部节点 tag 并按出现顺序去重；形状不符时返回空数组。 */
+export function nodeTagsFromSnapshot(data: unknown): string[] {
+  if (typeof data !== 'object' || data === null) return []
+  const groups = (data as { groups?: unknown }).groups
+  if (!Array.isArray(groups)) return []
+  const tags: string[] = []
+  for (const group of groups) {
+    const nodes = (group as { nodes?: unknown } | null)?.nodes
+    if (!Array.isArray(nodes)) continue
+    for (const node of nodes) {
+      const tag = (node as { tag?: unknown } | null)?.tag
+      if (typeof tag === 'string' && tag && !tags.includes(tag)) tags.push(tag)
+    }
+  }
+  return tags
+}
+
 export function decodeCtlResult<T>(r: ExecResult): CtlResult<T> {
   const payload = r.out.trim()
 
