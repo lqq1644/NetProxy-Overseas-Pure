@@ -3,7 +3,7 @@ name: 持续集成（构建与开发包）
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, overseas-pure]
     paths:
       - 'src/module/**'
       - 'src/native/netproxy/**'
