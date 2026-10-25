@@ -100,6 +100,24 @@ type AppPolicy struct {
 	Bindings   []inbound.AppBinding `json:"bindings"`
 }
 
+// proxyGlobalMode 判断是否为代理全局模式：该模式下分流全部走主节点，
+// 入站不过滤 UID、运行配置不拼绑定；防护规则（QUIC/UDP 443 拦截、私网旁路）不受影响。
+func proxyGlobalMode(mode string) bool {
+	return mode == "Proxy"
+}
+
+// buildConfigForMode 返回用于构建运行时配置的入站配置副本：
+// 代理全局模式下关闭分应用策略（UID 过滤与绑定均不生效），其余模式原样返回。
+// 只改副本，不动持久化配置，切回规则模式时白名单与绑定完整恢复。
+func buildConfigForMode(config inbound.Config, mode string) inbound.Config {
+	if !proxyGlobalMode(mode) {
+		return config
+	}
+	config.App.Enabled = false
+	config.App.Bindings = nil
+	return config
+}
+
 // Prepare 生成 Catalog、出站和当前受管入站运行时配置。
 func Prepare(ctx context.Context, options Options, allowEmpty bool) (PrepareResult, error) {
 	if err := options.validate(); err != nil {
@@ -163,7 +181,10 @@ func Prepare(ctx context.Context, options Options, allowEmpty bool) (PrepareResu
 	if err != nil {
 		return PrepareResult{}, err
 	}
-	missingPackages, err := inbound.WriteAtomic(ctx, inboundPath, config)
+	// 代理全局模式下用关闭分应用策略的副本构建运行时配置：全部应用都进核心、
+	// 且不拼绑定规则，流量统一落到代理规则走主节点；持久化配置不受影响。
+	buildConfig := buildConfigForMode(config, network.DesiredMode)
+	missingPackages, err := inbound.WriteAtomic(ctx, inboundPath, buildConfig)
 	if err != nil {
 		return PrepareResult{}, err
 	}
@@ -171,7 +192,7 @@ func Prepare(ctx context.Context, options Options, allowEmpty bool) (PrepareResu
 		logService(options, "WARN", "inbound.package", "skipped", "分应用代理跳过未安装应用: %s", ref.String())
 	}
 	effectiveConfig := filepath.Join(options.RuntimeDir, "config.json")
-	skippedBindings, err := writeEffectiveConfig(options, config, runtime.NodeTags, effectiveConfig)
+	skippedBindings, err := writeEffectiveConfig(options, buildConfig, runtime.NodeTags, effectiveConfig)
 	if err != nil {
 		return PrepareResult{}, err
 	}

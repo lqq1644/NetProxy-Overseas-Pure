@@ -20,6 +20,7 @@ import (
 	"time"
 
 	moduleconfig "github.com/Fanju6/NetProxy-Magisk/src/native/netproxy/internal/config"
+	"github.com/Fanju6/NetProxy-Magisk/src/native/netproxy/internal/inbound"
 	"github.com/Fanju6/NetProxy-Magisk/src/native/netproxy/internal/paths"
 	"github.com/Fanju6/NetProxy-Magisk/src/native/netproxy/internal/service"
 	"github.com/Fanju6/NetProxy-Magisk/src/native/netproxy/internal/serviceapi"
@@ -358,5 +359,39 @@ func TestModeTargetCoreDefaultConfig(t *testing.T) {
 	command.Dir = staticDir
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("默认模式路由的真实核心 check 失败: %v\n%s", err, output)
+	}
+}
+
+// TestBuildConfigForModeProxyGlobal 校验代理全局模式的构建副本：
+// 入站分应用策略关闭（UID 不过滤）、绑定清空（不拼包名规则），
+// 且原配置不受影响，切回规则模式时白名单与绑定完整恢复；
+// 其余模式（规则、直连等）原样保留分应用策略。
+func TestBuildConfigForModeProxyGlobal(t *testing.T) {
+	original := inbound.Config{
+		Backend: "ebpf",
+		App: inbound.AppPolicy{
+			Enabled:   true,
+			Mode:      "whitelist",
+			ProxyApps: []string{"0:com.example.app"},
+			Bindings:  []inbound.AppBinding{{App: "0:com.example.app", Outbound: "UK"}},
+		},
+	}
+
+	built := buildConfigForMode(original, "Proxy")
+	if built.App.Enabled {
+		t.Fatalf("代理全局模式下入站分应用策略应关闭，got enabled=true")
+	}
+	if len(built.App.Bindings) != 0 {
+		t.Fatalf("代理全局模式下不应拼绑定规则，got %v", built.App.Bindings)
+	}
+	if !original.App.Enabled || len(original.App.Bindings) != 1 {
+		t.Fatalf("构建副本不应改动原配置，got enabled=%v bindings=%v", original.App.Enabled, original.App.Bindings)
+	}
+
+	for _, mode := range []string{"Rule", "Direct", "RuleAllowAds"} {
+		kept := buildConfigForMode(original, mode)
+		if !kept.App.Enabled || len(kept.App.Bindings) != 1 {
+			t.Fatalf("模式 %s 下应原样保留分应用策略，got enabled=%v bindings=%v", mode, kept.App.Enabled, kept.App.Bindings)
+		}
 	}
 }
