@@ -77,7 +77,7 @@ CI 的管理器任务与标准模块构建并行启动，按变更范围在同�
 
 ## KernelSU 分发
 
-源码和 nightly 保留在本仓库；正式模块通过 [NetProxy-Releases](https://github.com/Fanju6/NetProxy-Releases) 的不可变 Release 提供给 KernelSU Modules。展示信息维护在根目录 `module.yaml`、`.github/kernelsu/README.md` 和图标中；官方发布 Action 只同步这些文件，不同步源码。
+源码和 nightly 保留在本仓库；正式模块的 KernelSU 分发流程尚未从上游迁移，当前请从本仓库 Releases 页获取 nightly 包。展示信息维护在根目录 `module.yaml`、`.github/kernelsu/README.md` 和图标中；官方发布 Action 只同步这些文件，不同步源码。
 
 正式 tag 的发布流程会先用 KernelSU 官方校验器检查完整模块包，随后发布主仓库，再把同一 ZIP 分发到独立仓库。独立分发失败时，在 Actions 中运行“KernelSU 正式版分发”，输入已发布 tag；默认只验证，关闭“只验证，不发布”才会发布。它不重新构建、不重复主仓库发布通知，已发布且摘要一致的版本可以安全重试；不一致时必须停止，不能覆盖不可变版本。
 

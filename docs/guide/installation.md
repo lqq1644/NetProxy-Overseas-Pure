@@ -18,7 +18,7 @@ Release 与 CI 统一提供 `NetProxy_<版本>_<构建号>.zip`，包含模块�
 
 ## 刷入模块
 
-1. 从 [GitHub Releases](https://github.com/Fanju6/NetProxy-Magisk/releases) 下载模块包。
+1. 从 [GitHub Releases](https://github.com/lqq1644/NetPure/releases) 下载模块包。
 2. 在 Root 管理器中选择并安装。
 3. 升级时选择安装方式：
    - **保留现有数据**：保留节点、订阅、模块日志及整个用户配置目录，包括模块设置、入站与共用应用策略、主配置、本地规则、自定义文件与核心持久状态。内置远程规则随安装包更新。

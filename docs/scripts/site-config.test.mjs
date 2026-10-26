@@ -44,7 +44,7 @@ describe('页面元数据', () => {
 describe('文档导航', () => {
   it('顶部保留四个文字入口与一个 GitHub 图标', () => {
     expect(config.themeConfig.nav.map(item => item.text)).toEqual(['开始使用', '配置参考', '更新日志', '更多'])
-    expect(config.themeConfig.socialLinks).toEqual([{ icon: 'github', link: 'https://github.com/Fanju6/NetProxy-Magisk' }])
+    expect(config.themeConfig.socialLinks).toEqual([{ icon: 'github', link: 'https://github.com/lqq1644/NetPure' }])
   })
 
   it('更多菜单按三组组织，所有导航指向已有页面', () => {

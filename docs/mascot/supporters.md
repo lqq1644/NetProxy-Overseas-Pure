@@ -10,4 +10,4 @@ aside: false
 
 <SupporterWall />
 
-昵称需要更正、匿名或移除时，请通过 [Telegram 群组](https://t.me/NetProxy_Magisk) 联系作者。
+昵称需要更正、匿名或移除时，请通过 [GitHub Issues](https://github.com/lqq1644/NetPure/issues) 联系作者。

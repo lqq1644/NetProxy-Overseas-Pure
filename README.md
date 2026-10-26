@@ -124,11 +124,6 @@ NetPure 是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 
   <a href="https://github.com/lqq1644/NetPure/stargazers"><img src="https://img.shields.io/github/stars/lqq1644/NetPure?style=flat-square" alt="GitHub stars" /></a>
 </p>
 
-## 交流与贡献
-
-- [提交 Issue](https://github.com/lqq1644/NetPure/issues)（本 fork 的问题请提在这里，不要去上游提）
-- 上游项目：[Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk)
-
 ## 许可证
 
 [GPL-3.0 License](LICENSE)

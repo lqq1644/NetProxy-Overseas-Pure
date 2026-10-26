@@ -155,9 +155,9 @@ export default defineConfig({
       ]
     },
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/Fanju6/NetProxy-Magisk' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/lqq1644/NetPure' }],
     editLink: {
-      pattern: 'https://github.com/Fanju6/NetProxy-Magisk/edit/main/docs/:path',
+      pattern: 'https://github.com/lqq1644/NetPure/edit/overseas-pure/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
     footer: {

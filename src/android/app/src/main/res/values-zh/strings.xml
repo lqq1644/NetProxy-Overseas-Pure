@@ -247,7 +247,7 @@
     <string name="no_module_summary">请确认模块后台正在运行，点击重新连接</string>
 
     <!-- About -->
-    <string name="about_source_code">在 %1$s 查看源码&lt;br/&gt;加入我们的 %2$s 频道</string>
+    <string name="about_source_code">在 %1$s 查看源码</string>
 
     <!-- Theme & UI -->
     <string name="settings_theme">主题设置</string>

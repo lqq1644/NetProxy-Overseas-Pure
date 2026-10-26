@@ -4,7 +4,7 @@
 
 ## 获取应用
 
-- 从 [Releases](https://github.com/Fanju6/NetProxy-Magisk/releases) 下载模块包获取管理器。
+- 从 [Releases](https://github.com/lqq1644/NetPure/releases) 下载模块包获取管理器。
 - 每个 Release 与 CI 模块包都包含管理器 APK；刷入时可选择安装或更新，也可跳过。
 
 模块包中的 APK 由仓库 CI 从当前源码构建，使用固定密钥签名，APK 和签名材料不提交到仓库。后续使用同一密钥的构建可以直接覆盖升级。管理器不检查安装来源或签名证书，也不显示来源警告；CI 版本名仍带提交短哈希，便于定位构建。

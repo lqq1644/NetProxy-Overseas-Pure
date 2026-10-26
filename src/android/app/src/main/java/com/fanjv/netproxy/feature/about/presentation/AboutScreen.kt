@@ -15,8 +15,7 @@ internal fun AboutScreen() {
     val uriHandler = LocalUriHandler.current
     val linksHtml = stringResource(
         id = R.string.about_source_code,
-        "<b><a href=\"https://github.com/Fanju6/NetProxy-Magisk\">GitHub</a></b>",
-        "<b><a href=\"https://t.me/NetProxy_Magisk\">Telegram</a></b>",
+        "<b><a href=\"https://github.com/lqq1644/NetPure\">GitHub</a></b>",
     )
 
     AboutScreenMiuix(

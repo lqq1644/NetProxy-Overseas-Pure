@@ -14,4 +14,4 @@ Android sing-box 透明代理模块，支持 eBPF 与 TUN 接管、节点与订�
 
 ## 项目入口
 
-[源码与开发版](https://github.com/Fanju6/NetProxy-Magisk) · [用户文档](https://netproxy.store) · [问题反馈](https://github.com/Fanju6/NetProxy-Magisk/issues) · [隐私政策](https://netproxy.store/privacy)
+[源码与开发版](https://github.com/lqq1644/NetPure) · [用户文档](https://netproxy.store) · [问题反馈](https://github.com/lqq1644/NetPure/issues) · [隐私政策](https://netproxy.store/privacy)
