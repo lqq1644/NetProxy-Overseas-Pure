@@ -9,6 +9,7 @@ import com.fanjv.netproxy.core.module.ServiceStatusSnapshot
 import com.fanjv.netproxy.core.ui.UiText
 import com.fanjv.netproxy.core.ui.toUiText
 import com.fanjv.netproxy.core.ui.userMessage
+import com.fanjv.netproxy.feature.settings.data.OutboundModePreferenceStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ internal data class CatalogDashboardUiState(
     val uptimeSeconds: Long = 0,
     val outboundMode: String = "unknown",
     val availableOutboundModes: List<String> = emptyList(),
+    val blockAdsInSplitMode: Boolean = false,
     val activeGroupId: String = "",
     val currentNode: String = "",
     val downloadBytesPerSecond: Long = 0,
@@ -70,6 +72,7 @@ internal class CatalogDashboardViewModel(
     private val repository: ServiceRepository,
     totalMemoryBytes: Long,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    private val modePreferences: OutboundModePreferenceStore? = null,
 ) : ViewModel(scope) {
     private val _state = MutableStateFlow(CatalogDashboardUiState())
     val state: StateFlow<CatalogDashboardUiState> = _state.asStateFlow()
@@ -102,6 +105,7 @@ internal class CatalogDashboardViewModel(
     }
 
     fun refresh() {
+        refreshModePreference()
         if (_state.value.connected) {
             refreshSnapshot()
         }
@@ -110,6 +114,7 @@ internal class CatalogDashboardViewModel(
     fun setVisible(visible: Boolean) {
         this.visible = visible
         if (visible) {
+            refreshModePreference()
             if (_state.value.connected) {
                 refreshSnapshot()
                 startUptimeTicker()
@@ -148,6 +153,13 @@ internal class CatalogDashboardViewModel(
         runOperation("mode") {
             repository.setMode(mode)
             UiText.Resource(R.string.dashboard_mode_changed)
+        }
+    }
+
+    private fun refreshModePreference() {
+        val blockAds = modePreferences?.blockAdsInSplitMode() ?: false
+        if (_state.value.blockAdsInSplitMode != blockAds) {
+            _state.update { it.copy(blockAdsInSplitMode = blockAds) }
         }
     }
 
@@ -328,6 +340,56 @@ internal fun dashboardNodeName(service: ServiceStatusSnapshot): String {
         .substringAfter('/', service.selectedNodeRef)
         .ifBlank { service.runtimeSelected.substringAfter('/', service.runtimeSelected) }
     return listOf(groupName, nodeName).filter(String::isNotBlank).joinToString("/")
+}
+
+/** 首页展示用的一档出站模式：显示文案、点选后实际写入内核的模式、命中即选中该档的内核模式集合。 */
+internal data class ModeDisplayEntry(
+    val label: String,
+    val kernelMode: String,
+    val matches: Set<String>,
+)
+
+/**
+ * 把内核模式列表折叠成首页三档：全局代理 / 应用分流 / 直连。
+ *
+ * 规则与规则（允许广告）在界面上合并为一档应用分流，点选时按去广告偏好写入
+ * 对应的内核模式；内核列表里没有的模式不凭空编造，未知模式原样单列一档。
+ */
+internal fun displayOutboundModes(
+    modeValues: List<String>,
+    blockAdsInSplitMode: Boolean,
+    splitLabel: String,
+    proxyLabel: String,
+    directLabel: String,
+): List<ModeDisplayEntry> {
+    val entries = mutableListOf<ModeDisplayEntry>()
+    var splitAdded = false
+    for (mode in modeValues) {
+        when (mode) {
+            "Rule", "RuleAllowAds" -> {
+                if (!splitAdded) {
+                    splitAdded = true
+                    val kernelMode = when {
+                        blockAdsInSplitMode && "Rule" in modeValues -> "Rule"
+                        !blockAdsInSplitMode && "RuleAllowAds" in modeValues -> "RuleAllowAds"
+                        "Rule" in modeValues -> "Rule"
+                        else -> "RuleAllowAds"
+                    }
+                    entries.add(
+                        ModeDisplayEntry(
+                            label = splitLabel,
+                            kernelMode = kernelMode,
+                            matches = setOf("Rule", "RuleAllowAds"),
+                        )
+                    )
+                }
+            }
+            "Proxy" -> entries.add(ModeDisplayEntry(proxyLabel, "Proxy", setOf("Proxy")))
+            "Direct" -> entries.add(ModeDisplayEntry(directLabel, "Direct", setOf("Direct")))
+            else -> entries.add(ModeDisplayEntry(mode, mode, setOf(mode)))
+        }
+    }
+    return entries
 }
 
 internal fun runtimeSelectedNodeTag(runtimeTag: String, selected: String): String {

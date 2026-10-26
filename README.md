@@ -2,7 +2,7 @@
   <img src="docs/public/N.svg" alt="NetProxy Logo" width="120" />
 </p>
 
-<h1 align="center">NetProxy Overseas Pure（海外纯净分应用定制版）</h1>
+<h1 align="center">NetPure（海外纯净分应用定制版）</h1>
 
 <p align="center">
   <strong>为海外用户做的 sing-box 透明代理：国内应用走国内节点，海外应用走海外节点，其余全部直连</strong><br />
@@ -23,7 +23,7 @@
 
 ## 写给海外用户
 
-> 本仓库是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 的 fork（基于 v8.6.1），由 lqq1644 维护。原作者 Fanju6，许可证仍为 [GPL-3.0](LICENSE)。
+> 本仓库是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 的 fork（基于 v8.6.1），作者 maracucho ly。原作者 Fanju6，许可证仍为 [GPL-3.0](LICENSE)。
 
 人在海外，手机里往往两边都要用：国内的政务、银行、购物要走国内网络，海外的工作、社交、AI 要走海外节点，剩下的日常应用又不希望绕路降速。这个版本就是为这种用法做的：**每个应用单独指定节点，没指定的默认直连**，不用再为一套规则反复横跳。
 

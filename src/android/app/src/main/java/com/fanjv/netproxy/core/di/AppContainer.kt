@@ -16,6 +16,7 @@ import com.fanjv.netproxy.feature.catalog.data.SubscriptionRepository
 import com.fanjv.netproxy.feature.logs.data.LogRepository
 import com.fanjv.netproxy.feature.inbound.data.InboundRepository
 import com.fanjv.netproxy.feature.settings.data.ConfigRepository
+import com.fanjv.netproxy.feature.settings.data.OutboundModePreferenceStore
 import com.fanjv.netproxy.feature.theme.presentation.ThemeManager
 
 /** 应用级依赖容器，保持 Repository 与 HTTP 客户端共享。 */
@@ -35,9 +36,10 @@ internal class AppContainer(context: Context) {
     val moduleEnvironment = AndroidModuleEnvironment(appContext, apiClient)
     val nodeImportStore = NodeImportStore(appContext)
     val appPackageRepository = AppPackageRepository(apiClient)
-    val themeManager = ThemeManager(
+    private val settingsPrefs =
         appContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    )
+    val themeManager = ThemeManager(settingsPrefs)
+    val outboundModePreferenceStore = OutboundModePreferenceStore(settingsPrefs)
     val viewModelFactory = NetProxyViewModelFactory(this)
 
     private fun reportConfigurationSaveFailure(message: String) {

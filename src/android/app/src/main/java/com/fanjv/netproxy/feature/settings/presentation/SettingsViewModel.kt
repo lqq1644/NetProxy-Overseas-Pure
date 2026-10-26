@@ -3,8 +3,10 @@ package com.fanjv.netproxy.feature.settings.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fanjv.netproxy.core.config.ConfigurationWrites
+import com.fanjv.netproxy.core.module.ServiceRepository
 import com.fanjv.netproxy.core.ui.userMessage
 import com.fanjv.netproxy.feature.settings.data.ConfigRepository
+import com.fanjv.netproxy.feature.settings.data.OutboundModePreferenceStore
 import com.fanjv.netproxy.feature.settings.model.ModuleAutoStartConfig
 import com.fanjv.netproxy.feature.settings.model.ModuleWifiConfig
 import com.fanjv.netproxy.feature.settings.model.WifiPolicySettings
@@ -23,7 +25,9 @@ import kotlinx.coroutines.launch
 internal class SettingsViewModel(
     private val repository: ConfigRepository,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-    private val writes: ConfigurationWrites = ConfigurationWrites(scope)
+    private val writes: ConfigurationWrites = ConfigurationWrites(scope),
+    private val modePreferences: OutboundModePreferenceStore? = null,
+    private val serviceRepository: ServiceRepository? = null,
 ) : ViewModel(scope) {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
@@ -128,8 +132,34 @@ internal class SettingsViewModel(
         val settings = SettingsUiState(
             hasLoaded = true,
             autoStartEnabled = autoStart.enabled,
+            blockAdsInSplitMode = modePreferences?.blockAdsInSplitMode() ?: false,
             wifi = wifi.wifi
         )
         return settings
+    }
+
+    /**
+     * 应用分流下的去广告开关。偏好立即保存；当前已是应用分流时，
+     * 立即按开关写入对应的内核模式（开为 Rule，关为 RuleAllowAds）。
+     * 当前是全局代理或直连时只保存偏好，下次选应用分流时生效。
+     */
+    fun setBlockAdsInSplitMode(enabled: Boolean) {
+        if (!state.value.hasLoaded) return
+        if (enabled == state.value.blockAdsInSplitMode) return
+        modePreferences?.setBlockAdsInSplitMode(enabled)
+        mutableState.update { it.copy(blockAdsInSplitMode = enabled, error = "") }
+        val service = serviceRepository ?: return
+        viewModelScope.launch {
+            runCatching { service.status() }.onSuccess { snapshot ->
+                if (snapshot.outboundMode == "Rule" || snapshot.outboundMode == "RuleAllowAds") {
+                    runCatching {
+                        service.setMode(if (enabled) "Rule" else "RuleAllowAds")
+                    }.onFailure { error ->
+                        mutableState.update { it.copy(error = error.userMessage()) }
+                    }
+                }
+            }
+            // 运行模式读不到时只保留偏好，不报错：下次选应用分流时偏好仍会生效。
+        }
     }
 }

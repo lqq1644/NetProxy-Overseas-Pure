@@ -11,14 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContactPage
-import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material.icons.rounded.Router
-import androidx.compose.material.icons.automirrored.rounded.AltRoute
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -94,69 +92,6 @@ internal fun SettingsScreen(
                 overscrollEffect = null,
             ) {
                 groupedCardSection(
-                    keyPrefix = "settings_entries",
-                    title = { stringResource(R.string.settings_section_proxy) },
-                    items = listOf(
-                        CardItem("inbound") {
-                            ArrowPreference(
-                                title = stringResource(R.string.inbound_settings),
-                                summary = stringResource(R.string.inbound_settings_summary),
-                                startAction = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Router,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        tint = colorScheme.onBackground
-                                    )
-                                },
-                                onClick = { navigator.push(Route.InboundSettings) }
-                            )
-                        },
-                        CardItem("network") {
-                            ArrowPreference(
-                                title = stringResource(R.string.network_matching),
-                                summary = stringResource(R.string.network_matching_summary),
-                                startAction = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Wifi,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        tint = colorScheme.onBackground
-                                    )
-                                },
-                                onClick = { navigator.push(Route.NetworkMatching) }
-                            )
-                        },
-                        CardItem("routing") {
-                            ArrowPreference(
-                                title = stringResource(R.string.routing_rules),
-                                summary = stringResource(R.string.routing_rules_summary),
-                                startAction = {
-                                    Icon(Icons.AutoMirrored.Rounded.AltRoute, contentDescription = null,
-                                        modifier = Modifier.padding(end = 6.dp), tint = colorScheme.onBackground)
-                                },
-                                onClick = { navigator.push(Route.RoutingRules) }
-                            )
-                        },
-                        CardItem("kernel") {
-                            ArrowPreference(
-                                title = stringResource(R.string.kernel_settings),
-                                summary = stringResource(R.string.kernel_settings_summary),
-                                startAction = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Memory,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        tint = colorScheme.onBackground
-                                    )
-                                },
-                                onClick = { navigator.push(Route.KernelSettings) }
-                            )
-                        },
-                    ),
-                )
-
-                groupedCardSection(
                     keyPrefix = "settings_general",
                     title = { stringResource(R.string.settings_section_general) },
                     items = buildList {
@@ -177,6 +112,23 @@ internal fun SettingsScreen(
                                 onCheckedChange = { viewModel.setAutoStartEnabled(it) }
                             )
                         })
+                        if (available) add(CardItem("blockAds") {
+                            SwitchPreference(
+                                title = stringResource(R.string.settings_block_ads),
+                                summary = stringResource(R.string.settings_block_ads_summary),
+                                startAction = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Block,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = colorScheme.onBackground
+                                    )
+                                },
+                                checked = settings.blockAdsInSplitMode,
+                                enabled = settings.hasLoaded,
+                                onCheckedChange = { viewModel.setBlockAdsInSplitMode(it) }
+                            )
+                        })
                         add(CardItem("theme") {
                             ArrowPreference(
                                 title = stringResource(R.string.settings_theme),
@@ -190,6 +142,21 @@ internal fun SettingsScreen(
                                     )
                                 },
                                 onClick = { navigator.push(Route.ThemeSettings) }
+                            )
+                        })
+                        add(CardItem("expert") {
+                            ArrowPreference(
+                                title = stringResource(R.string.settings_expert),
+                                summary = stringResource(R.string.settings_expert_summary),
+                                startAction = {
+                                    Icon(
+                                        Icons.Rounded.Tune,
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        contentDescription = null,
+                                        tint = colorScheme.onBackground
+                                    )
+                                },
+                                onClick = { navigator.push(Route.ExpertSettings) }
                             )
                         })
                     },

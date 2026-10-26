@@ -31,7 +31,8 @@ internal class NetProxyViewModelFactory(
             ModuleAccessViewModel::class.java -> ModuleAccessViewModel(container.moduleEnvironment)
             CatalogDashboardViewModel::class.java -> CatalogDashboardViewModel(
                 container.serviceRepository,
-                container.moduleEnvironment.totalMemoryBytes
+                container.moduleEnvironment.totalMemoryBytes,
+                modePreferences = container.outboundModePreferenceStore
             )
 
             CatalogNodesViewModel::class.java -> CatalogNodesViewModel(
@@ -60,7 +61,9 @@ internal class NetProxyViewModelFactory(
 
             SettingsViewModel::class.java -> SettingsViewModel(
                 container.configRepository,
-                writes = container.configurationWrites
+                writes = container.configurationWrites,
+                modePreferences = container.outboundModePreferenceStore,
+                serviceRepository = container.serviceRepository
             )
 
             InboundViewModel::class.java -> InboundViewModel(container.inboundRepository,

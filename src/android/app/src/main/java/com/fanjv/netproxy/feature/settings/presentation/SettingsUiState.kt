@@ -7,6 +7,7 @@ import com.fanjv.netproxy.feature.settings.model.WifiPolicySettings
 data class SettingsUiState(
     val hasLoaded: Boolean = false,
     val autoStartEnabled: Boolean = false,
+    val blockAdsInSplitMode: Boolean = false,
     val wifi: WifiPolicySettings = WifiPolicySettings(),
     val isLoading: Boolean = false,
     val isSavingWifi: Boolean = false,

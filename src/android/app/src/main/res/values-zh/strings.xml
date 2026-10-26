@@ -8,7 +8,7 @@
     <string name="apps_read_failed">无法读取分应用代理配置</string>
 
     <!-- 通用 -->
-    <string name="app_name">NetProxy</string>
+    <string name="app_name">NetPure</string>
     <string name="settings">设置</string>
     <string name="about">关于</string>
     <string name="save_text">保存</string>
@@ -44,10 +44,9 @@
     <string name="dashboard_total_traffic">累计流量</string>
     <string name="dashboard_traffic">↑ %1$s   ↓ %2$s</string>
     <string name="dashboard_outbound_mode">出站模式</string>
-    <string name="dashboard_mode_rule">规则</string>
-    <string name="dashboard_mode_proxy">代理</string>
+    <string name="dashboard_mode_rule">应用分流</string>
+    <string name="dashboard_mode_proxy">全局代理</string>
     <string name="dashboard_mode_direct">直连</string>
-    <string name="dashboard_mode_rule_allow_ads">规则（允许广告）</string>
     <string name="dashboard_mode_unknown">实际模式未知</string>
     <string name="dashboard_current_node">当前节点</string>
     <string name="dashboard_not_selected">未选择</string>
@@ -226,12 +225,16 @@
     <string name="settings_section_proxy">代理配置</string>
     <string name="settings_section_general">通用设置</string>
     <string name="settings_section_support">帮助与关于</string>
+    <string name="settings_expert">专家设置</string>
+    <string name="settings_expert_summary">入站参数、Wi-Fi 名单、路由规则与内核设置等高级选项</string>
     <string name="inbound_settings">入站设置</string>
     <string name="inbound_settings_summary">配置透明代理接管与分应用策略</string>
     <string name="network_matching">网络匹配</string>
     <string name="network_matching_summary">按 Wi-Fi 名称匹配代理策略</string>
     <string name="auto_start">开机自启</string>
     <string name="auto_start_summary">系统启动时自动开启服务</string>
+    <string name="settings_block_ads">去广告</string>
+    <string name="settings_block_ads_summary">仅在应用分流下起作用。开启后，命中广告规则的请求会在 DNS 解析和连接两层被直接拒绝，广告资源不会下载，页面更快、更省流量；个别应用因此打不开时，关掉开关即可。</string>
 
     <!-- Module prerequisites -->
     <string name="no_module_title">无法连接模块后台</string>

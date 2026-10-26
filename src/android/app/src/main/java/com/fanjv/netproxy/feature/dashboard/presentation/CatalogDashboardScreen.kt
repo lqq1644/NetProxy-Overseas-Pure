@@ -182,23 +182,22 @@ internal fun CatalogDashboardScreen(
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         val modeValues = state.availableOutboundModes
-                        val modeLabels = modeValues.map { mode ->
-                            when (mode) {
-                                "Rule" -> stringResource(R.string.dashboard_mode_rule)
-                                "Proxy" -> stringResource(R.string.dashboard_mode_proxy)
-                                "Direct" -> stringResource(R.string.dashboard_mode_direct)
-                                "RuleAllowAds" -> stringResource(R.string.dashboard_mode_rule_allow_ads)
-                                else -> mode
-                            }
-                        }
-                        val selectedModeIndex = modeValues.indexOf(state.outboundMode)
+                        val modeEntries = displayOutboundModes(
+                            modeValues = modeValues,
+                            blockAdsInSplitMode = state.blockAdsInSplitMode,
+                            splitLabel = stringResource(R.string.dashboard_mode_rule),
+                            proxyLabel = stringResource(R.string.dashboard_mode_proxy),
+                            directLabel = stringResource(R.string.dashboard_mode_direct),
+                        )
+                        val selectedModeIndex =
+                            modeEntries.indexOfFirst { state.outboundMode in it.matches }
                         val modeItems = if (selectedModeIndex >= 0) {
-                            modeLabels
+                            modeEntries.map { it.label }
                         } else {
                             listOf(
                                 if (state.outboundMode == "unknown") stringResource(R.string.dashboard_mode_unknown)
                                 else state.outboundMode
-                            ) + modeLabels
+                            ) + modeEntries.map { it.label }
                         }
                         OverlayDropdownPreference(
                             title = stringResource(R.string.dashboard_outbound_mode),
@@ -214,7 +213,7 @@ internal fun CatalogDashboardScreen(
                             },
                             onSelectedIndexChange = { index ->
                                 val actualIndex = if (selectedModeIndex >= 0) index else index - 1
-                                modeValues.getOrNull(actualIndex)?.let(viewModel::setMode)
+                                modeEntries.getOrNull(actualIndex)?.let { viewModel.setMode(it.kernelMode) }
                             }
                         )
                         ArrowPreference(

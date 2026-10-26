@@ -57,6 +57,10 @@ sealed interface Route : NavKey, Parcelable {
 
     @Parcelize
     @Serializable
+    data object ExpertSettings : Route
+
+    @Parcelize
+    @Serializable
     data object Logs : Route
 
     @Parcelize
