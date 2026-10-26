@@ -11,6 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Core-sing--box-blueviolet?style=flat-square" alt="sing-box Core" />
+  <a href="https://github.com/lqq1644/NetPure/stargazers"><img src="https://img.shields.io/github/stars/lqq1644/NetPure?style=flat-square" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
@@ -21,18 +22,22 @@
 
 ---
 
-## 写给海外用户
+## 项目简介
 
-> 本仓库是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 的 fork（基于 v8.6.1），作者 maracucho ly。原作者 Fanju6，许可证仍为 [GPL-3.0](LICENSE)。
+NetPure 是 [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) 的 fork（基于 v8.6.1），作者 maracucho ly，许可证仍为 [GPL-3.0](LICENSE)。它保留了 NetProxy 的核心优点——sing-box 内核、eBPF / TUN 透明代理、分应用代理、节点与订阅、测速与诊断——同时把设置做简单，专门给海外用户用。
 
-人在海外，手机里往往两边都要用：国内的政务、银行、购物要走国内网络，海外的工作、社交、AI 要走海外节点，剩下的日常应用又不希望绕路降速。这个版本就是为这种用法做的：**每个应用单独指定节点，没指定的默认直连**，不用再为一套规则反复横跳。
+人在海外，手机里往往两边都要用：国内的政务、银行、购物要走国内网络，海外的工作、社交、AI 要走海外节点，剩下的日常应用又不希望绕路降速。NetPure 就是为这种用法做的：**每个应用单独指定节点，没指定的默认直连**，不用再为一套规则反复横跳。
 
-## 海外场景：一个手机，两边都顺
+这个版本是按海外用户的痛点改出来的，改动本身就是优点：
 
-- **国内服务走中国节点**：交管 12123、铁路 12306 这类只认国内网络的应用，绑中国节点就能正常用，不用整机切回国内。
-- **限制地区的海外服务走对应节点**：比如 Muse 这类限制美国 IP 的服务，绑美国节点；京东绑香港节点；钱包绑日本节点；其他地区服务按需绑。
-- **其余应用默认直连**：没绑定的应用不进代理，不绕路、不降速，本地流量就是本地流量。
-- **想整机出海时一键全局**：出站切到“代理”模式，全机流量（不管白名单、绑定）全部走你选的主节点；用完切回“规则”，分应用设置原样回来。
+- **首页就能设，不用钻菜单**：以前分应用要走设置 → 入站设置 → 应用代理三步，现在首页一点直达分应用选择；去广告开关也在首页，不用再翻设置。
+- **三档出站，一句话讲清**：全局代理 / 应用分流 / 直连，默认应用分流；不用再记 Rule、RuleAllowAds 这类名字。
+- **开箱即直连，不吓人**：默认空白名单等于全直连，一个应用一个应用慢慢加，不会一开启就全机走代理。
+- **新手默认不再踩坑**：本机网络 IPv6 接管默认关闭，节点不支持 IPv6 时不再因此失败；已装用户原有开关状态不变。
+- **海外纯净默认**：没有为国内环境准备的 GFW / geo 分流规则，没有国内 DNS；节点域名解析走无 detour 的 Cloudflare 直连，不经过代理自身（避免解析自环）。
+- **防护默认开着**：QUIC 与 UDP 443 拦截（防止浏览器 QUIC 旁路代理）、私网旁路；双栈站点正常打开。
+- **整机出海一键切**：出站切到“代理”模式，全机走主节点；切回“规则”，分应用设置原样回来。
+- **名字和图标统一**：管理器、模块控制中心、仓库首页都叫 NetPure、都用猫图标，不再新旧混用。
 
 ## 出站模式：四种，一句话讲清
 
@@ -77,13 +82,15 @@
 - **DNS 与 IPv6 修复**：节点域名解析改无 detour 的 Cloudflare 直连（修复经代理自身解析导致的自环）；删除 IPv6 拒绝规则，IPv6 流量与 IPv4 一样走节点（无 IPv6 出口的节点由浏览器自动回落 IPv4）。
 - **内置协议防护**：主配置在 hijack-dns 规则后内置 QUIC 拒绝与 UDP 443 拒绝两条规则；分应用绑定规则插入位置位于防护规则之后，避免被绑定应用的 QUIC 流量绕过防护先进入节点。
 
-上游文档站（netproxy.store）描述的是上游行为，本 fork 的模式与绑定行为以本 README 为准。
+## 使用文档
 
-## 界面预览
+本 fork 的行为以本 README 与本仓库的自有文件为准，不以上游文档站为准：
 
-<div align="center">
-  <img src="docs/public/Screenshot.jpg" width="60%" alt="NetPure Android 管理器界面预览" />
-</div>
+- 行为与模式：以本 README 的出站模式、分应用绑定、海外纯净默认与与上游的差异为准
+- 开发流程与验证方法：[贡献指南](CONTRIBUTING.md)
+- 架构与跨组件契约：[AGENTS.md](AGENTS.md)
+- 管理器构建：[Android 说明](src/android/README.md)
+- 变更记录：[变更记录](docs/changelog.md)
 
 ## 主要功能
 
@@ -92,25 +99,15 @@
 - **节点选择与测速**：手动选择或自动优选，服务停止时也可测速。
 - **分应用代理**：黑名单 / 白名单，按 Android 用户分别配置，支持应用分身；管理器首页可直接进入分应用选择，去广告开关也在首页。
 - **网络策略**：规则、代理、直连与规则（允许广告）模式，按 Wi-Fi 名称和实际出口自动切换。
+- **一键全局**：出站切到“代理”模式，整机流量走主节点；切回“规则”，白名单与绑定完整恢复。
+- **海外纯净默认**：无 GFW / geo 分流规则，无国内 DNS；本机网络 IPv6 接管默认关闭。
 - **配置与诊断**：编辑 sing-box 配置、本地规则，查看运行时配置与日志，导出脱敏诊断包。
-
-## 源码结构
-
-```text
-src/module/          模块安装与运行文件
-src/native/netproxy/ Go 原生组件
-src/webui/           终端式模块 WebUI
-src/android/         Android 管理器
-docs/                用户文档站
-tests/               契约与回归测试
-```
-
-开发流程与验证方法见[贡献指南](CONTRIBUTING.md)，架构和跨组件契约见 [AGENTS.md](AGENTS.md)，管理器构建见 [Android 说明](src/android/README.md)。
 
 ## 鸣谢
 
 | 项目 | 用途 |
 |------|------|
+| [Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk) | 上游原作者，本 fork 的基础 |
 | [reF1nd/sing-box](https://github.com/reF1nd/sing-box) | 当前代理核心 |
 | [SagerNet/sing-box](https://github.com/SagerNet/sing-box) | 上游 sing-box 项目 |
 | [Proxylink](https://github.com/Fanju6/Proxylink) | NetProxy 内部节点转换能力的原始项目 |
@@ -118,6 +115,14 @@ tests/               契约与回归测试
 | [v2rayNG](https://github.com/2dust/v2rayNG) | 节点解析实现参考 |
 
 同时感谢曾为早期版本提供核心能力或实现参考的 [CHIZI-0618/sing-box](https://github.com/CHIZI-0618/sing-box)、[Xray-core](https://github.com/XTLS/Xray-core)、[AndroidTProxyShell](https://github.com/CHIZI-0618/AndroidTProxyShell)、[IPSET_LKM](https://github.com/TanakaLun/IPSET_LKM) 和 [KsuWebUIStandalone](https://github.com/KOWX712/KsuWebUIStandalone)。
+
+## Star
+
+如果 NetPure 对你有用，欢迎点 Star——下面的数字就是本仓库的实时数据：
+
+<p>
+  <a href="https://github.com/lqq1644/NetPure/stargazers"><img src="https://img.shields.io/github/stars/lqq1644/NetPure?style=flat-square" alt="GitHub stars" /></a>
+</p>
 
 ## 交流与贡献
 
