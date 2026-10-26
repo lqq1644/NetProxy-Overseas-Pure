@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/public/N.svg" alt="NetProxy Logo" width="120" />
+  <img src="src/module/webroot/favicon.png" alt="NetPure Logo" width="120" />
 </p>
 
 <h1 align="center">NetProxy</h1>

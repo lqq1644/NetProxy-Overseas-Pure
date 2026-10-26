@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/public/N.svg" alt="NetProxy Logo" width="120" />
+  <img src="src/module/webroot/favicon.png" alt="NetPure Logo" width="120" />
 </p>
 
 <h1 align="center">NetPure（海外纯净分应用定制版）</h1>
@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lqq1644/NetProxy-Overseas-Pure/releases">下载模块与管理器</a> ·
-  <a href="https://github.com/lqq1644/NetProxy-Overseas-Pure/issues">问题反馈</a> ·
+  <a href="https://github.com/lqq1644/NetPure/releases">下载模块与管理器</a> ·
+  <a href="https://github.com/lqq1644/NetPure/issues">问题反馈</a> ·
   <a href="src/android/">管理器源码</a>
 </p>
 
@@ -49,6 +49,7 @@
 - **无国内 DNS**：DNS 仅保留 Cloudflare/Google，节点域名解析走无 detour 的 Cloudflare 直连，不经过任何国内解析，也不经过代理自身（避免解析自环）。
 - **协议防护默认开启**：QUIC 与 UDP 443 拦截（防止浏览器 QUIC 旁路代理）、私网旁路（局域网流量不进节点）；IPv6 已修复，双栈站点（如 `www.google.com`）正常打开。
 - **分应用策略默认白名单（空名单）**：刚装好时等于全直连，一个应用一个应用慢慢加，不会一开启就全机走代理。
+- **本机网络 IPv6 接管默认关闭**：新装默认不接管 IPv6，节点不支持 IPv6 时不再因此失败；已装用户原有开关状态不变。
 
 ## 分应用绑定：三处都能设
 
@@ -60,7 +61,7 @@
 
 运行环境为 `arm64-v8a` Android 设备与 Magisk、KernelSU 或 APatch，使用 Root 权限接管流量。默认使用 eBPF，可在“设置 → 入站设置”中选择 TUN。
 
-1. 从 [Releases](https://github.com/lqq1644/NetProxy-Overseas-Pure/releases) 下载 `NetProxy_<版本>_<构建号>.zip`，内含模块和 Android 管理器。
+1. 从 [Releases](https://github.com/lqq1644/NetPure/releases) 下载 `NetProxy_<版本>_<构建号>.zip`，内含模块和 Android 管理器。
 2. 在 Root 管理器中刷入，按提示选择数据保留方式及是否安装管理器；等待安装完成。
 3. 打开 Android 管理器，自动连接模块，在“节点”页导入节点，或在“订阅”页添加订阅。
 4. 日常使用选“规则”模式，在白名单里给应用绑节点；整机出海时切“代理”模式并选主节点。
@@ -81,7 +82,7 @@
 ## 界面预览
 
 <div align="center">
-  <img src="docs/public/Screenshot.jpg" width="60%" alt="NetProxy Android 管理器界面预览" />
+  <img src="docs/public/Screenshot.jpg" width="60%" alt="NetPure Android 管理器界面预览" />
 </div>
 
 ## 主要功能
@@ -89,7 +90,7 @@
 - **透明代理**：eBPF 或 TUN 接管 TCP、UDP 与 DNS，支持热点和 USB 共享网络。
 - **节点与订阅**：导入节点链接、节点文本、Clash YAML 和 sing-box JSON；支持订阅筛选、请求头、流量信息与自动更新。
 - **节点选择与测速**：手动选择或自动优选，服务停止时也可测速。
-- **分应用代理**：黑名单 / 白名单，按 Android 用户分别配置，支持应用分身。
+- **分应用代理**：黑名单 / 白名单，按 Android 用户分别配置，支持应用分身；管理器首页可直接进入分应用选择，去广告开关也在首页。
 - **网络策略**：规则、代理、直连与规则（允许广告）模式，按 Wi-Fi 名称和实际出口自动切换。
 - **配置与诊断**：编辑 sing-box 配置、本地规则，查看运行时配置与日志，导出脱敏诊断包。
 
@@ -120,7 +121,7 @@ tests/               契约与回归测试
 
 ## 交流与贡献
 
-- [提交 Issue](https://github.com/lqq1644/NetProxy-Overseas-Pure/issues)（本 fork 的问题请提在这里，不要去上游提）
+- [提交 Issue](https://github.com/lqq1644/NetPure/issues)（本 fork 的问题请提在这里，不要去上游提）
 - 上游项目：[Fanju6/NetProxy-Magisk](https://github.com/Fanju6/NetProxy-Magisk)
 
 ## 许可证
