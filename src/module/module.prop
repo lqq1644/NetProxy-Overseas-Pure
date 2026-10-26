@@ -1,6 +1,6 @@
 id=netproxy
 name=NetPure
-version=v8.6.1
+version=1.0.2
 versionCode=5
 author=maracucho ly
 description=基于 sing-box 内核的海外纯净分应用透明代理（NetPure，Fanju6/NetProxy-Magisk 定制版，作者 maracucho ly）
