@@ -5,4 +5,4 @@ versionCode=5
 author=maracucho ly
 description=基于 sing-box 内核的海外纯净分应用透明代理（NetPure，Fanju6/NetProxy-Magisk 定制版，作者 maracucho ly）
 updateJson=https://github.com/Fanju6/NetProxy-Magisk/releases/latest/download/update.json
-webuiIcon=webroot/netproxy/favicon.svg
+webuiIcon=webroot/favicon.png
