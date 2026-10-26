@@ -16,6 +16,7 @@ import com.fanjv.netproxy.feature.catalog.data.SubscriptionRepository
 import com.fanjv.netproxy.feature.logs.data.LogRepository
 import com.fanjv.netproxy.feature.inbound.data.InboundRepository
 import com.fanjv.netproxy.feature.settings.data.ConfigRepository
+import com.fanjv.netproxy.feature.scenes.data.ScenePreferenceStore
 import com.fanjv.netproxy.feature.settings.data.OutboundModePreferenceStore
 import com.fanjv.netproxy.feature.theme.presentation.ThemeManager
 
@@ -40,6 +41,9 @@ internal class AppContainer(context: Context) {
         appContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val themeManager = ThemeManager(settingsPrefs)
     val outboundModePreferenceStore = OutboundModePreferenceStore(settingsPrefs)
+    val scenePreferenceStore = ScenePreferenceStore(
+        appContext.getSharedPreferences("scenes", Context.MODE_PRIVATE)
+    )
     val viewModelFactory = NetProxyViewModelFactory(this)
 
     private fun reportConfigurationSaveFailure(message: String) {

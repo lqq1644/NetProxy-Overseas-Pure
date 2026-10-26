@@ -63,6 +63,7 @@ import com.fanjv.netproxy.feature.catalog.presentation.subscriptions.Subscriptio
 import com.fanjv.netproxy.feature.dashboard.presentation.CatalogDashboardScreen
 import com.fanjv.netproxy.feature.kernel.presentation.SingBoxJsonEditScreen
 import com.fanjv.netproxy.feature.kernel.presentation.SingBoxKernelSettingsScreen
+import com.fanjv.netproxy.feature.scenes.presentation.ScenesScreen
 import com.fanjv.netproxy.feature.settings.presentation.ExpertSettingsScreen
 import com.fanjv.netproxy.feature.logs.presentation.LogsScreen
 import com.fanjv.netproxy.feature.inbound.presentation.InboundSettingsScreen
@@ -78,6 +79,7 @@ import com.fanjv.netproxy.navigation.MainPagerState
 import com.fanjv.netproxy.navigation.Route.About
 import com.fanjv.netproxy.navigation.Route.Apps
 import com.fanjv.netproxy.navigation.Route.ExpertSettings
+import com.fanjv.netproxy.navigation.Route.Scenes
 import com.fanjv.netproxy.navigation.Route.JsonEdit
 import com.fanjv.netproxy.navigation.Route.KernelSettings
 import com.fanjv.netproxy.navigation.Route.Logs
@@ -248,6 +250,11 @@ internal fun NetProxyApp(themeViewModel: ThemeViewModel) {
                 }
                 entry<ExpertSettings> {
                     ExpertSettingsScreen(onBack = { navigator.pop() })
+                }
+                entry<Scenes> {
+                    ModulePage(R.string.scenes_title, R.string.scenes_read_failed, { navigator.pop() }) {
+                        ScenesScreen(onBack = { navigator.pop() })
+                    }
                 }
                 entry<JsonEdit> {
                     ModulePage(R.string.kernel_settings, R.string.singbox_documents_load_failed, { navigator.pop() }) {

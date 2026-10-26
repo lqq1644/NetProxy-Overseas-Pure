@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.AltRoute
 import androidx.compose.material.icons.rounded.DataUsage
+import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Router
@@ -49,6 +50,8 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.fanjv.netproxy.navigation.LocalNavigator
+import com.fanjv.netproxy.navigation.Route
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -70,6 +73,7 @@ internal fun CatalogDashboardScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val availability = LocalModuleAvailability.current
+    val navigator = LocalNavigator.current
     LaunchedEffect(availability) { viewModel.setAvailability(availability) }
     val snackbarHostState = rememberAppSnackbarHostState()
     val scrollBehavior = MiuixScrollBehavior()
@@ -230,6 +234,19 @@ internal fun CatalogDashboardScreen(
                                 )
                             },
                             onClick = onNavigateToNodes
+                        )
+                        ArrowPreference(
+                            title = stringResource(R.string.scenes_title),
+                            enabled = availability?.available == true,
+                            summary = stringResource(R.string.scenes_entry_summary),
+                            startAction = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Layers,
+                                    contentDescription = null,
+                                    tint = colorScheme.primary
+                                )
+                            },
+                            onClick = { navigator.push(Route.Scenes) }
                         )
                     }
                 }
