@@ -19,7 +19,6 @@ import com.fanjv.netproxy.feature.logs.presentation.LogsViewModel
 import com.fanjv.netproxy.feature.inbound.presentation.InboundViewModel
 import com.fanjv.netproxy.feature.settings.presentation.SettingsViewModel
 import com.fanjv.netproxy.feature.routing.presentation.RoutingRulesViewModel
-import com.fanjv.netproxy.feature.scenes.presentation.ScenesViewModel
 import com.fanjv.netproxy.feature.theme.presentation.ThemeViewModel
 
 /** 在应用组合根集中创建 ViewModel，业务类不再依赖 Application 或服务定位器。 */
@@ -79,13 +78,6 @@ internal class NetProxyViewModelFactory(
                 container.configRepository,
                 container.serviceRepository,
                 container.inboundRepository
-            )
-
-            ScenesViewModel::class.java -> ScenesViewModel(
-                container.serviceRepository,
-                container.appPolicyRepository,
-                container.nodeRepository,
-                container.scenePreferenceStore,
             )
 
             LogsViewModel::class.java -> LogsViewModel(container.logRepository)
