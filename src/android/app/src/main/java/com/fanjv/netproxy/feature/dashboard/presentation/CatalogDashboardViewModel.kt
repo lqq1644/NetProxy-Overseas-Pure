@@ -156,6 +156,23 @@ internal class CatalogDashboardViewModel(
         }
     }
 
+    /** 首页去广告开关：与设置页共用同一偏好，运行在应用分流时立即切换内核模式。 */
+    fun setBlockAdsInSplitMode(enabled: Boolean) {
+        val current = _state.value
+        if (!current.connected || current.loading) return
+        if (enabled == current.blockAdsInSplitMode) return
+        modePreferences?.setBlockAdsInSplitMode(enabled)
+        _state.update { it.copy(blockAdsInSplitMode = enabled) }
+        viewModelScope.launch {
+            runCatching { repository.status() }.onSuccess { service ->
+                if (service.outboundMode == "Rule" || service.outboundMode == "RuleAllowAds") {
+                    setMode(if (enabled) "Rule" else "RuleAllowAds")
+                }
+            }
+            // 运行模式读不到时只保留偏好，不报错：下次选应用分流时偏好仍会生效。
+        }
+    }
+
     private fun refreshModePreference() {
         val blockAds = modePreferences?.blockAdsInSplitMode() ?: false
         if (_state.value.blockAdsInSplitMode != blockAds) {

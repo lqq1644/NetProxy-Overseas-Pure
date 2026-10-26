@@ -150,7 +150,7 @@ test('单一入站默认保留 eBPF 原生语义和禁用共享路径偏好', ()
   assert.deepEqual(managed.ebpf, {
     type: 'ebpf', tag: 'netproxy-in', network: ['tcp', 'udp'], udp_timeout: '5m', tc_priority: 1,
     local: {
-      enabled: true, data_plane: 'cgroup', dns_mode: 'respect_policy', ipv6: true,
+      enabled: true, data_plane: 'cgroup', dns_mode: 'respect_policy', ipv6: false,
       bypass_private_address: true, bypass_rule_set: [],
     },
     shared: {

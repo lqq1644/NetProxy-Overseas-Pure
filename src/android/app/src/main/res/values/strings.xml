@@ -43,6 +43,7 @@
     <string name="dashboard_mode_direct">Direct</string>
     <string name="dashboard_mode_unknown">Active mode unknown</string>
     <string name="dashboard_current_node">Current node</string>
+    <string name="home_apps_summary">Choose which apps use the proxy</string>
     <string name="dashboard_not_selected">Not selected</string>
     <string name="dashboard_service_up">UP: %1$s</string>
     <string name="dashboard_service_started">Service started</string>

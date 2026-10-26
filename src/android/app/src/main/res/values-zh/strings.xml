@@ -49,6 +49,7 @@
     <string name="dashboard_mode_direct">直连</string>
     <string name="dashboard_mode_unknown">实际模式未知</string>
     <string name="dashboard_current_node">当前节点</string>
+    <string name="home_apps_summary">选择哪些应用走代理</string>
     <string name="dashboard_not_selected">未选择</string>
     <string name="dashboard_service_up">UP: %1$s</string>
     <string name="dashboard_service_started">服务已启动</string>

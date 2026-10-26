@@ -43,6 +43,7 @@
     <string name="dashboard_mode_direct">Напрямую</string>
     <string name="dashboard_mode_unknown">Текущий режим неизвестен</string>
     <string name="dashboard_current_node">Текущий узел</string>
+    <string name="home_apps_summary">Выберите приложения, использующие прокси</string>
     <string name="dashboard_not_selected">Не выбран</string>
     <string name="dashboard_service_up">UP: %1$s</string>
     <string name="dashboard_service_started">Служба запущена</string>

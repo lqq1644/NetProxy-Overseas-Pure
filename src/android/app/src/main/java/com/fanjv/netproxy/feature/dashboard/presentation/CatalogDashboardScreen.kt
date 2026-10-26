@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.AltRoute
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.DataUsage
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Memory
@@ -49,9 +51,12 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.fanjv.netproxy.navigation.LocalNavigator
+import com.fanjv.netproxy.navigation.Route
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
@@ -70,6 +75,7 @@ internal fun CatalogDashboardScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val availability = LocalModuleAvailability.current
+    val navigator = LocalNavigator.current
     LaunchedEffect(availability) { viewModel.setAvailability(availability) }
     val snackbarHostState = rememberAppSnackbarHostState()
     val scrollBehavior = MiuixScrollBehavior()
@@ -216,6 +222,21 @@ internal fun CatalogDashboardScreen(
                                 modeEntries.getOrNull(actualIndex)?.let { viewModel.setMode(it.kernelMode) }
                             }
                         )
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_block_ads),
+                            summary = stringResource(R.string.settings_block_ads_summary),
+                            startAction = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Block,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    tint = colorScheme.onBackground
+                                )
+                            },
+                            checked = state.blockAdsInSplitMode,
+                            enabled = availability?.available == true && !state.loading,
+                            onCheckedChange = { viewModel.setBlockAdsInSplitMode(it) }
+                        )
                         ArrowPreference(
                             title = stringResource(R.string.dashboard_current_node),
                             enabled = availability?.available == true,
@@ -230,6 +251,19 @@ internal fun CatalogDashboardScreen(
                                 )
                             },
                             onClick = onNavigateToNodes
+                        )
+                        ArrowPreference(
+                            title = stringResource(R.string.proxy_apps),
+                            enabled = availability?.available == true,
+                            summary = stringResource(R.string.home_apps_summary),
+                            startAction = {
+                                Icon(
+                                    imageVector = Icons.Rounded.Apps,
+                                    contentDescription = null,
+                                    tint = colorScheme.primary
+                                )
+                            },
+                            onClick = { navigator.push(Route.Apps) }
                         )
                     }
                 }
